@@ -1,0 +1,36 @@
+world: hub
+world_coordinates:
+  y: -32
+  pos1:
+    x: -4077
+    z: -4338
+  pos2:
+    x: -4075
+    z: -4335
+map_coordinates:
+  pos1:
+    x: -12000
+    z: -12000
+  pos2:
+    x: 12000
+    z: 12000
+warp_radius: 100
+warps:
+  Minas Tirith:
+    message:
+    radius: 200
+    priority: 10
+  Rauros:
+    message:
+  Henneth Annun:
+    message: ""
+    radius: 2
+myWarp_Database:
+  user: xxx
+  password: xxx
+  dbName: xxx
+  ip: localhost
+  port: 3306
+
+
+    
