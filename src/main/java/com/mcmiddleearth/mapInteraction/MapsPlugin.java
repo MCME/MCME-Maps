@@ -2,15 +2,13 @@ package com.mcmiddleearth.mapInteraction;
 
 import com.mcmiddleearth.base.bukkit.AbstractPaperPlugin;
 import com.mcmiddleearth.base.core.message.Message;
-import com.mcmiddleearth.mapInteraction.map.Map;
-import org.bukkit.Bukkit;
+import com.mcmiddleearth.mapInteraction.map.MapManager;
 
 public final class MapsPlugin extends AbstractPaperPlugin {
 
     private static MapsPlugin plugin;
 
-    private Map map;
-    private PlayerListener playerListener;
+    private MapManager mapManager;
 
     public static MapsPlugin getInstance() {
         return plugin;
@@ -20,17 +18,14 @@ public final class MapsPlugin extends AbstractPaperPlugin {
     public void enable() {
         plugin = this;
         saveDefaultConfig();
-        map = new Map(getConfig());
-        playerListener = new PlayerListener(map);
-        Bukkit.getPluginManager().registerEvents(playerListener, this);
+        mapManager = new MapManager();
     }
 
     @Override
     public void disable() {
-        if(map!=null) {
-            map.remove();
+        if(mapManager != null) {
+            mapManager.disable();
         }
-        playerListener.disable();
     }
 
     @Override

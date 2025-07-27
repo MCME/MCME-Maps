@@ -1,36 +1,97 @@
-world: hub
-world_coordinates:
-  y: -32
-  pos1:
-    x: -4077
-    z: -4338
-  pos2:
-    x: -4075
-    z: -4335
-map_coordinates:
-  pos1:
-    x: -12000
-    z: -12000
-  pos2:
-    x: 12000
-    z: 12000
-warp_radius: 100
-warps:
-  Minas Tirith:
-    message:
-    radius: 200
-    priority: 10
-  Rauros:
-    message:
-  Henneth Annun:
-    message: ""
-    radius: 2
 myWarp_Database:
   user: xxx
   password: xxx
   dbName: xxx
   ip: localhost
   port: 3306
+maps:
+  The Red Book:
+    world: hub
+    world_coordinates:
+      y: -32
+      pos1:
+        x: -4077
+        z: -4338
+      pos2:
+        x: -4075
+        z: -4335
+    pages:
+      The Shire:
+        no: 1
+        map_coordinates:
+          pos1:
+            x: -5000
+            z: -5000
+          pos2:
+            x: -3000
+            z: -3500
+        warp_radius: 100
+        warps:
+          Hobbiton: {}
+          Tuckborrough: {}
+          Brandy Hall: {}
+          Waymoot: {}
+          Frogmorton: {}
+          Nobottle: {}
+          Overhill: {}
+          Willowbottom: {}
+          Whitfurrows: {}
+      Gondor:
+        no: 3
+        map_coordinates:
+          pos1:
+            x: 2000
+            z: 500
+          pos2:
+            x: 12000
+            z: 6500
+        warp_radius: 100
+        warps:
+          Edoras: {}
+          Erech: {}
+          Calembel: {}
+          Linhir: {}
+          Ethring: {}
+          Pelargir: {}
+          Cair Andros: {}
+          Minas Morgul: {}
+          Black Gate: {}
+          Falls of Rauros: {}
+          Minas Tirith:
+            message:
+            radius: 200
+            priority: 10
+      West of Middle-earth:
+        no: 2
+        map_coordinates:
+          pos1:
+            x: -12000
+            z: -1200
+          pos2:
+            x: 17000
+            z: 14500
+        warp_radius: 100
+        warps:
+          Fornost: {}
+          Rivendell: {}
+          Hobbiton: {}
+          Mithlond: {}
+          Tharbad: {}
+          Isengard: {}
+          Helm's Deep: {}
+          Dol Amroth: {}
+          Lothlorien: {}
+          Moria West Gate: {}
+          Pelargir: {}
+          Minas Tirith:
+            message:
+            radius: 200
+            priority: 10
+          Falls of Rauros:
+            message:
+          Black Gate: {}
+  The Thain's Book:
+    copy of: The Red Book
 
 
     

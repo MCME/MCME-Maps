@@ -1,7 +1,6 @@
-package com.mcmiddleearth.mapInteraction;
+package com.mcmiddleearth.mapInteraction.map;
 
-import com.mcmiddleearth.mapInteraction.map.Map;
-import com.mcmiddleearth.mapInteraction.map.Position;
+import com.mcmiddleearth.mapInteraction.MapsPlugin;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
@@ -17,7 +16,7 @@ import org.joml.Vector3f;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-public class PlayerListener implements Listener {
+public class MapDisplay implements Listener {
 
     private final Map map;
     private final HashMap<Player, TextDisplay> entities = new HashMap<>();
@@ -25,11 +24,11 @@ public class PlayerListener implements Listener {
 
     private final boolean showCoordinates = false;
 
-    public PlayerListener(Map map) {
+    public MapDisplay(Map map) {
         this.map = map;
     }
 
-    public void disable() {
+    public void clear() {
         entities.forEach((player,entity) -> entity.remove());
         entities.clear();
         warps.forEach((player,warp) -> {

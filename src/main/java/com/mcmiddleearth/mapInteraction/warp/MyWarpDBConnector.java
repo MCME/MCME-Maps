@@ -56,7 +56,8 @@ public class MyWarpDBConnector {
     
     private final Task keepAliveTask;
     
-    public MyWarpDBConnector(ConfigurationSection config) {
+    public MyWarpDBConnector() {
+        ConfigurationSection config = MapsPlugin.getInstance().getConfig().getConfigurationSection("myWarp_Database");
         try {
             Class.forName("com.mysql.jdbc.Driver");
         } catch (ClassNotFoundException e) {
@@ -75,7 +76,7 @@ public class MyWarpDBConnector {
             checkConnection();
             //WarpHandler.updateCache();
         });
-        keepAliveTask.scheduleRepeating(5,60,TimeUnit.SECONDS);
+        keepAliveTask.scheduleRepeating(60,60,TimeUnit.SECONDS);
     }
     
     public void disconnect() {
