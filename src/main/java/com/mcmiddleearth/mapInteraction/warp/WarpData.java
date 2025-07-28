@@ -17,8 +17,6 @@
 package com.mcmiddleearth.mapInteraction.warp;
 
 import com.mcmiddleearth.base.core.player.McmeProxyPlayer;
-import net.kyori.adventure.text.Component;
-import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Vector;
 
 import java.util.UUID;
@@ -41,11 +39,6 @@ public class WarpData {
     private boolean visibleToEveryone;
     private UUID owner;
     private Set<UUID> invited = new HashSet<>();
-    private int radius;
-    private Component message;
-    private int priority;
-
-    private TextDisplay entity;
 
     public String getServer() {
         return server;
@@ -107,39 +100,8 @@ public class WarpData {
         visibleToEveryone = isPublic;
     }
 
-    public int getRadius() {
-        return radius;
-    }
-
-    public void setRadius(int radius) {
-        this.radius = radius;
-    }
-
-    public Component getMessage() {
-        return message;
-    }
-
-    public void setMessage(Component message) {
-        this.message = message;
-    }
-
-    public int getPriority() {
-        return priority;
-    }
-
-    public void setPriority(int priority) {
-        this.priority = priority;
-    }
-
     public Vector getPosition() {
         return warpPosition;
     }
 
-    public TextDisplay getEntity() {
-        return entity;
-    }
-
-    public void setEntity(TextDisplay entity) {
-        this.entity = entity;
-    }
 }

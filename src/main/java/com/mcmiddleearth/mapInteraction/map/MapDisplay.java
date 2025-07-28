@@ -1,6 +1,7 @@
 package com.mcmiddleearth.mapInteraction.map;
 
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
+import com.mcmiddleearth.mapInteraction.map.marker.Marker;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
@@ -20,7 +21,7 @@ public class MapDisplay implements Listener {
 
     private final Map map;
     private final HashMap<Player, TextDisplay> entities = new HashMap<>();
-    private final HashMap<Player, WarpData> warps = new HashMap<>();
+    private final HashMap<Player, com.mcmiddleearth.mapInteraction.map.marker.Marker> markers = new HashMap<>();
 
     private final boolean showCoordinates = false;
 
@@ -31,10 +32,10 @@ public class MapDisplay implements Listener {
     public void clear() {
         entities.forEach((player,entity) -> entity.remove());
         entities.clear();
-        warps.forEach((player,warp) -> {
-            player.hideEntity(MapsPlugin.getInstance(),warp.getEntity());
+        markers.forEach((player, marker) -> {
+            player.hideEntity(MapsPlugin.getInstance(),marker.getEntity());
         });
-        warps.clear();
+        markers.clear();
     }
     @EventHandler
     public void playerMove(PlayerMoveEvent event) {
@@ -44,23 +45,23 @@ public class MapDisplay implements Listener {
             Position position = map.getTargetPosition(player);
             if(position != null) {
 //Logger.getGlobal().info("Position: "+position.getWorldX()+" "+map.getCenter().getY()+1+" "+position.getWorldZ());
-                WarpData warp = map.getWarp(position);
-                WarpData lastWarp = warps.get(player);
-                if(warp != null) {
-Logger.getGlobal().info("Target warp: "+warp.getName());
-                    if(lastWarp != warp) {
-Logger.getGlobal().info("show entity: "+warp.getName());
-                        if(lastWarp != null) {
-                            player.hideEntity(MapsPlugin.getInstance(), lastWarp.getEntity());
+                Marker marker = map.getMarker(position);
+                Marker lastMarker = markers.get(player);
+                if(marker != null) {
+Logger.getGlobal().info("Target marker: "+marker.getPlainText());
+                    if(lastMarker != marker) {
+Logger.getGlobal().info("show entity: "+marker.getPlainText());
+                        if(lastMarker != null) {
+                            player.hideEntity(MapsPlugin.getInstance(), lastMarker.getEntity());
                         }
-                        player.showEntity(MapsPlugin.getInstance(),warp.getEntity());
-                        warps.put(player, warp);
+                        player.showEntity(MapsPlugin.getInstance(),marker.getEntity());
+                        markers.put(player, marker);
                     }
                 } else {
-                    if(lastWarp != null) {
-Logger.getGlobal().info("hide entity: "+lastWarp.getName());
-                        player.hideEntity(MapsPlugin.getInstance(),lastWarp.getEntity());
-                        warps.remove(player);
+                    if(lastMarker != null) {
+Logger.getGlobal().info("hide entity: "+lastMarker.getPlainText());
+                        player.hideEntity(MapsPlugin.getInstance(),lastMarker.getEntity());
+                        markers.remove(player);
                     }
                 }
                 if(showCoordinates) {
@@ -94,10 +95,10 @@ Logger.getGlobal().info("hide entity: "+lastWarp.getName());
                         entity.remove();
                     }
                 }
-                WarpData warp = warps.get(player);
-                if(warp != null) {
-                    player.hideEntity(MapsPlugin.getInstance(), warp.getEntity());
-                    warps.remove(player);
+                Marker marker = markers.get(player);
+                if(marker != null) {
+                    player.hideEntity(MapsPlugin.getInstance(), marker.getEntity());
+                    markers.remove(player);
                 }
             }
         }
@@ -110,10 +111,10 @@ Logger.getGlobal().info("hide entity: "+lastWarp.getName());
         if(entity != null) {
             entity.remove();
         }
-        WarpData lastWarp = warps.get(player);
-        if(lastWarp != null) {
-            player.hideEntity(MapsPlugin.getInstance(), lastWarp.getEntity());
-            warps.remove(player);
+        Marker lastMarker = markers.get(player);
+        if(lastMarker != null) {
+            player.hideEntity(MapsPlugin.getInstance(), lastMarker.getEntity());
+            markers.remove(player);
         }
     }
 

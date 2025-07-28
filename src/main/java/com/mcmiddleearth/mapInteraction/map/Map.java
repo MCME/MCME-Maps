@@ -2,20 +2,22 @@ package com.mcmiddleearth.mapInteraction.map;
 
 import com.google.gson.JsonParseException;
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
+import com.mcmiddleearth.mapInteraction.map.marker.Marker;
+import com.mcmiddleearth.mapInteraction.map.marker.WarpMarker;
 import com.mcmiddleearth.mapInteraction.warp.MyWarpDBConnector;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.util.RayTraceResult;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +29,7 @@ public class Map {
 
     private Interaction entity;
 
-    private final Set<WarpData> warpDataSet = new HashSet<>();
+    private final Set<Marker> mapMarkerSet = new HashSet<>();
 
     private List<String> pages;
 
@@ -83,6 +85,13 @@ public class Map {
         }
     }
 
+    public void loadPage(String name) {
+        int pageNo = pages.indexOf(name);
+        if(pageNo >= 0) {
+            loadPage(pageNo);
+        }
+    }
+
     public void loadPage(int page) {
         if(page >= 0 && page < pages.size()) {
             currentPage = page;
@@ -104,6 +113,26 @@ public class Map {
             double zMapMin = mapPos1.getDouble("z");
             double zMapMax = mapPos2.getDouble("z");
 
+            double xWorldMin = this.xWorldMin;
+            double xWorldMax = this.xWorldMax;
+            double zWorldMin = this.zWorldMin;
+            double zWorldMax = this.zWorldMax;
+
+            ConfigurationSection worldSection = config.getConfigurationSection("world_coordinates");
+            if (worldSection != null) {
+
+                ConfigurationSection worldPos1 = worldSection.getConfigurationSection("pos1");
+                ConfigurationSection worldPos2 = worldSection.getConfigurationSection("pos2");
+
+                assert worldPos1 != null;
+                assert worldPos2 != null;
+
+                xWorldMin = worldPos1.getDouble("x");
+                xWorldMax = worldPos2.getDouble("x");
+                zWorldMin = worldPos1.getDouble("z");
+                zWorldMax = worldPos2.getDouble("z");
+            }
+
             transformation = new Transformation(xMapMin, zMapMin, xMapMax, zMapMax,
                     xWorldMin, zWorldMin, xWorldMax, zWorldMax);
 
@@ -118,14 +147,14 @@ public class Map {
                         ConfigurationSection section = warpSection.getConfigurationSection(warpName);
                         WarpData warp = dbConnector.getWarp(warpName);
                         if (warp != null) {
-                            createWarpEntity(warp);
-                            warpDataSet.add(warp);
-                            Logger.getGlobal().info("Warp loaded: " + warpName + " " + warp.getPosition().getX() + " " + warp.getPosition().getZ());
+                            Marker marker = new WarpMarker(this, warp);
+                            mapMarkerSet.add(marker);
+Logger.getGlobal().info("Warp loaded: " + warpName + " " + warp.getPosition().getX() + " " + warp.getPosition().getZ());
                             if (section != null) {
-                                warp.setPriority(section.getInt("priority", 0));
-                                warp.setRadius(section.getInt("radius", pageConfig.getInt("warp_radius", 100)));
+                                marker.setPriority(section.getInt("priority", 0));
+                                marker.setRadius(section.getInt("radius", pageConfig.getInt("warp_radius", 100)));
                                 try {
-                                    warp.setMessage(GsonComponentSerializer.gson().deserialize(section.getString("message", "{}")));
+                                    marker.setMessage(GsonComponentSerializer.gson().deserialize(section.getString("message", "{}")));
                                 } catch (JsonParseException ex) {
                                     MapsPlugin.getInstance().getMcmeLogger().warn("Error while reading warp message");
                                 }
@@ -147,12 +176,12 @@ public class Map {
         if(entity != null) {
             entity.remove();
         }
-        warpDataSet.forEach(warp -> {
+        mapMarkerSet.forEach(warp -> {
             if(warp.getEntity() != null) {
                 warp.getEntity().remove();
             }
         });
-        warpDataSet.clear();
+        mapMarkerSet.clear();
         if(listener != null) {
             listener.clear();
             HandlerList.unregisterAll(listener);
@@ -182,34 +211,16 @@ public class Map {
         return null;
     }
 
-    public WarpData getWarp(Position position) {
-        return warpDataSet.stream().filter(warp -> {
-            Location warpLocation = warp.getPosition().toLocation(getCenter().getWorld());
-            warpLocation.setY(0);
-            return warpLocation.distance(new Location(warpLocation.getWorld(),
+    public Marker getMarker(Position position) {
+        return mapMarkerSet.stream().filter(marker -> {
+            Location markerLocation = new Location(getCenter().getWorld(), marker.getPosition().getMapX(),
+                                                         0, marker.getPosition().getMapZ());
+            return markerLocation.distance(new Location(markerLocation.getWorld(),
                                                     position.getMapX(),0,
-                                                    position.getMapZ())) < warp.getRadius();
-        }).min(Comparator.comparingInt(warp -> -((WarpData) warp).getPriority())
-                .thenComparing(warp -> ((WarpData) warp).getRadius())).orElse(null);
+                                                    position.getMapZ())) < marker.getRadius();
+        }).min(Comparator.comparingInt(marker -> -((Marker) marker).getPriority())
+                .thenComparing(marker -> ((Marker) marker).getRadius())).orElse(null);
     }
 
-    private void createWarpEntity(WarpData warp) {
-        TextDisplay warpEntity = (TextDisplay) getCenter().getWorld()
-                .spawnEntity(new Location(getCenter().getWorld(),
-                             getTransformation().getWorldX(warp.getPosition().getX()),
-                             getCenter().getY()+1,
-                             getTransformation().getWorldZ(warp.getPosition().getZ())), EntityType.TEXT_DISPLAY);
-Logger.getGlobal().info("Entity: "+warpEntity.getLocation());
-        warpEntity.setBillboard(Display.Billboard.CENTER);
-        warpEntity.text(Component.text(warp.getName()));
-        float size = 0.5f;
-        warpEntity.setTransformation(new org.bukkit.util.Transformation(new Vector3f(0,0,0),
-                new Quaternionf(0,0,0,1),
-                new Vector3f(size, size, size),
-                new Quaternionf(0,0,0,1)));
-        warpEntity.setVisibleByDefault(false);
-        warp.setEntity(warpEntity);
-    }
-
-    private record PageId(String name, int no){}
+   private record PageId(String name, int no){}
 }
