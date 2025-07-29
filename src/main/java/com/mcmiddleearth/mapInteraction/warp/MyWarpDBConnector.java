@@ -61,21 +61,18 @@ public class MyWarpDBConnector {
         try {
             Class.forName("com.mysql.jdbc.Driver");
         } catch (ClassNotFoundException e) {
-            MapsPlugin.getInstance().getLogger().severe("MySQL driver not found!");
-            e.printStackTrace();
+            MapsPlugin.getInstance().getMcmeLogger().error("MySQL driver not found!",e);
         }
+        assert config != null;
         dbUser = (String) config.get("user");
         dbPassword = (String) config.get("password");
         dbName = (String) config.get("dbName");
         dbIp = (String) config.get("ip");
-        port = (Integer) config.get("port");
+        port = (Integer) config.get("port",3306);
 
         loadWorldUUIDs();
         connect();
-        keepAliveTask = MapsPlugin.getInstance().getTask( () -> {
-            checkConnection();
-            //WarpHandler.updateCache();
-        });
+        keepAliveTask = MapsPlugin.getInstance().getTask(this::checkConnection);
         keepAliveTask.scheduleRepeating(60,60,TimeUnit.SECONDS);
     }
     
@@ -93,7 +90,7 @@ public class MyWarpDBConnector {
         }
     }
     
-    private boolean checkConnection() {
+    private void checkConnection() {
         try {
             if(connected && dbConnection.isValid(5)) {
                 MapsPlugin.getInstance().getMcmeLogger().info("Successfully checked connection to myWarp database.");
@@ -106,11 +103,9 @@ public class MyWarpDBConnector {
                 MapsPlugin.getInstance().getMcmeLogger().warn("Reconnecting to myWarp database.");
                 connect();
             }
-            return true;
         } catch (SQLException ex) {
             MapsPlugin.getInstance().getMcmeLogger().error("No DB connection!!",ex);
             connected = false;
-            return false;
         }
     }
     
@@ -220,16 +215,16 @@ public class MyWarpDBConnector {
     }
     
     private String addWildcards(String name) {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         for(int i = 0; i<name.length();i++) {
             String sub = name.substring(i,i+1);
             if(sub.matches("[a-z]|[A-Z]")) {
-                result = result + "["+sub.toLowerCase()+sub.toUpperCase()+"]";
-            } else if(sub.matches(" |-")) {
-                result = result + "[ |-]";
+                result.append("[").append(sub.toLowerCase()).append(sub.toUpperCase()).append("]");
+            } else if(sub.matches("[ \\-]")) {
+                result.append("[ |-]");
             }
         }
-        return result;
+        return result.toString();
     }
     
     public void addWorldUUID(String uuid, String worldName) {

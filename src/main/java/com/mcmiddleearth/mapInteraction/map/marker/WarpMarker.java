@@ -4,6 +4,8 @@ import com.mcmiddleearth.mapInteraction.map.Map;
 import com.mcmiddleearth.mapInteraction.map.Position;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import org.bukkit.entity.Player;
 
 public class WarpMarker extends com.mcmiddleearth.mapInteraction.map.marker.Marker {
 
@@ -16,13 +18,17 @@ public class WarpMarker extends com.mcmiddleearth.mapInteraction.map.marker.Mark
     }
 
     private static Position createPosition(Map map, WarpData warpData) {
-        Position position = new Position(map);
-        position.setMapPosition(warpData.getPosition().getX(), warpData.getPosition().getZ());
-        return position;
+        return new Position(map).setMapPosition(warpData.getPosition().getX(), warpData.getPosition().getZ());
     }
 
     @Override
     public Component getText() {
         return Component.text(warpData.getName());
+    }
+
+    @Override
+    public void handleInteract(Player player) {
+        player.sendMessage(Component.text("Click to warp to "+warpData.getName())
+                                    .clickEvent((ClickEvent.runCommand("/warp "+warpData.getName()))));
     }
 }

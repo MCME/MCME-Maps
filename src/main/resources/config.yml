@@ -13,11 +13,17 @@ maps:
         x: -4077
         z: -4338
       pos2:
-        x: -4075
+        x: -4073
         z: -4335
+    marker_radius: 0.1
     pages:
       The Shire:
         no: 1
+        padding:
+          left: 0.5
+          top: 0
+          right: 0.5
+          bottom: 0
         map_coordinates:
           pos1:
             x: -5000
@@ -25,7 +31,13 @@ maps:
           pos2:
             x: -3000
             z: -3500
-        warp_radius: 100
+        links:
+          West of Middle-earth:
+            x: -5000
+            z: -3500
+          Gondor:
+            x: -3500
+            z: -3500
         warps:
           Hobbiton: {}
           Tuckborrough: {}
@@ -45,7 +57,13 @@ maps:
           pos2:
             x: 12000
             z: 6500
-        warp_radius: 100
+        links:
+          West of Middle-earth:
+            x: 2000
+            z: 6500
+          The Shire:
+            x: 3000
+            z: 500
         warps:
           Edoras: {}
           Erech: {}
@@ -70,7 +88,13 @@ maps:
           pos2:
             x: 17000
             z: 14500
-        warp_radius: 100
+        links:
+          The Shire:
+            x: -10000
+            z: -1200
+          Gondor:
+            x: 15000
+            z: 14500
         warps:
           Fornost: {}
           Rivendell: {}
@@ -92,6 +116,15 @@ maps:
           Black Gate: {}
   The Thain's Book:
     copy of: The Red Book
+    world: world
+    world_coordinates:
+      y: -32
+      pos1:
+        x: -4087
+        z: -4338
+      pos2:
+        x: -4083
+        z: -4335
 
 
     

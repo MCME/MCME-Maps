@@ -7,16 +7,15 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import java.util.logging.Logger;
-
 public abstract class Marker {
 
     private final Position position;
-    private int radius;
+    private double radius;
     private Component message;
     private int priority;
 
@@ -28,13 +27,13 @@ public abstract class Marker {
 
     public abstract Component getText();
 
+    public abstract void handleInteract(Player player);
 
     protected void createMarkerEntity(Map map) {
         TextDisplay markerEntity = (TextDisplay) map.getCenter().getWorld()
                 .spawnEntity(new Location(map.getCenter().getWorld(),getPosition().getWorldX(),
                         map.getCenter().getY()+1,
                         getPosition().getWorldZ()), EntityType.TEXT_DISPLAY);
-Logger.getGlobal().info("Entity: "+markerEntity.getLocation());
         markerEntity.setBillboard(Display.Billboard.CENTER);
         markerEntity.text(getText());
         float size = 0.5f;
@@ -51,11 +50,11 @@ Logger.getGlobal().info("Entity: "+markerEntity.getLocation());
         return position;
     }
 
-    public int getRadius() {
+    public double getRadius() {
         return radius;
     }
 
-    public void setRadius(int radius) {
+    public void setRadius(double radius) {
         this.radius = radius;
     }
 
