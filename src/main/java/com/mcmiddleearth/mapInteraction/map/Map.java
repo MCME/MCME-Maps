@@ -79,6 +79,9 @@ public class Map {
             }
             pages = ids.stream().sorted(Comparator.comparingInt(PageId::no)).map(pageId -> pageId.name).toList();
             loadPage(0);
+            //don't load page on creation
+            //instead create One interaction entity
+            // Animation depends on clicked position (activation, pageleft pageright)
         } else {
             MapsPlugin.getInstance().getMcmeLogger().warn("Invalid map configuration.");
         }
