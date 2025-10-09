@@ -44,4 +44,12 @@ public final class MapsPlugin extends AbstractPaperPlugin {
     public Message getMessagePrefix() {
         return  createMessage().add("[MapInteraction] ");
     }
+
+    public MapManager getMapManager() {
+        return mapManager;
+    }
+
+    public static MapsPlugin getPlugin() {
+        return plugin;
+    }
 }

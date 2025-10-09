@@ -45,4 +45,8 @@ public class MapManager {
     public void disable() {
         maps.forEach((mapName, map) -> map.remove());
     }
+
+    public HashMap<String, Map> getMaps() {
+        return maps;
+    }
 }

@@ -7,6 +7,9 @@ import com.mcmiddleearth.mapInteraction.map.marker.PageMarker;
 import com.mcmiddleearth.mapInteraction.map.marker.WarpMarker;
 import com.mcmiddleearth.mapInteraction.warp.MyWarpDBConnector;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
+import com.ticxo.modelengine.api.ModelEngineAPI;
+import com.ticxo.modelengine.api.model.ActiveModel;
+import com.ticxo.modelengine.api.model.ModeledEntity;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -28,11 +31,16 @@ public class Map {
 
     private final ConfigurationSection config;
 
-    private Interaction entity;
+    private Interaction mapEntity, activationEntity;
+    private ModeledEntity animationEntity;
+    private ActiveModel animationModel;
+
+    private double activationRadius;
 
     private final Set<Marker> mapMarkerSet = new HashSet<>();
 
     private List<String> pages;
+    private int currentPage = -1;
 
     private double xWorldMin, xWorldMax, zWorldMin, zWorldMax;
     private Transformation transformation;
@@ -41,12 +49,17 @@ public class Map {
 
     public Map(ConfigurationSection mapConfig, ConfigurationSection worldConfig) {
         this.config = mapConfig;
+        activationRadius = worldConfig.getDouble("activationRange",10);
         ConfigurationSection pagesConfig = mapConfig.getConfigurationSection("pages");
         ConfigurationSection worldSection = worldConfig.getConfigurationSection("world_coordinates");
-        if (pagesConfig != null && worldSection != null) {
+        ConfigurationSection activationSection = worldConfig.getConfigurationSection("activation_coordinates");
+        if (pagesConfig != null && worldSection != null && activationSection != null) {
 
             ConfigurationSection worldPos1 = worldSection.getConfigurationSection("pos1");
             ConfigurationSection worldPos2 = worldSection.getConfigurationSection("pos2");
+
+            ConfigurationSection activationPos1 = activationSection.getConfigurationSection("pos1");
+            ConfigurationSection activationPos2 = activationSection.getConfigurationSection("pos2");
 
             assert worldPos1 != null;
             assert worldPos2 != null;
@@ -66,9 +79,9 @@ public class Map {
             double xSize = xWorldMax - xWorldMin;
             double zSize = zWorldMax - zWorldMin;
 
-            entity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
-            entity.setInteractionHeight((float) 0.1);
-            entity.setInteractionWidth((float) Math.max(xSize, zSize));
+            mapEntity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
+            mapEntity.setInteractionHeight((float) 0.1);
+            mapEntity.setInteractionWidth((float) Math.max(xSize, zSize));
 
             ArrayList<PageId> ids = new ArrayList<>();
             for(String pageName: pagesConfig.getKeys(false)) {
@@ -78,10 +91,17 @@ public class Map {
                 }
             }
             pages = ids.stream().sorted(Comparator.comparingInt(PageId::no)).map(pageId -> pageId.name).toList();
-            loadPage(0);
+            //loadPage(0);
             //don't load page on creation
             //instead create One interaction entity
             // Animation depends on clicked position (activation, pageleft pageright)
+            activationEntity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
+            activationEntity.setInteractionHeight((float) 0.1);
+            activationEntity.setInteractionWidth((float) Math.max(xSize, zSize));
+            animationEntity = ModelEngineAPI.createModeledEntity(activationEntity);
+            animationModel = ModelEngineAPI.createActiveModel("book_and_map");
+            animationEntity.addModel(animationModel, true);
+
         } else {
             MapsPlugin.getInstance().getMcmeLogger().warn("Invalid map configuration.");
         }
@@ -98,6 +118,7 @@ public class Map {
         if(page >= 0 && page < pages.size()) {
             clearPage();
             String pageName = pages.get(page);
+            currentPage = page;
 
             ConfigurationSection pagesConfig = config.getConfigurationSection("pages");
             assert pagesConfig != null;
@@ -187,7 +208,7 @@ public class Map {
         return section.getDouble("radius", config.getDouble("marker_radius", 0.1));
     }
 
-    private void clearPage() {
+    public void clearPage() {
         mapMarkerSet.forEach(marker -> {
             if(marker.getEntity() != null) {
                 marker.getEntity().remove();
@@ -197,32 +218,42 @@ public class Map {
 
     public void remove() {
         clearPage();
-        if(entity != null) {
-            entity.remove();
+        if(mapEntity != null) {
+            mapEntity.remove();
         }
         mapMarkerSet.clear();
         if(listener != null) {
             listener.clear();
             HandlerList.unregisterAll(listener);
         }
+        animationEntity.markRemoved();
+        activationEntity.remove();
     }
 
     public Transformation getTransformation() {
         return transformation;
     }
 
-    public @NotNull Entity getEntity() {
-        return entity;
+    public @NotNull Entity getMapEntity() {
+        return mapEntity;
+    }
+
+    public @NotNull Entity getActivationEntity() {
+        return activationEntity;
+    }
+
+    public @NotNull ActiveModel getAnimationModel() {
+        return animationModel;
     }
 
     public Location getCenter() {
-        return entity.getLocation();
+        return mapEntity.getLocation();
     }
 
     public Position getTargetPosition(Player player) {
         RayTraceResult result = player.getWorld()
                 .rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(),5,
-                                  entity -> entity == this.entity);
+                                  entity -> entity == this.mapEntity);
         if(result != null) {
             return new Position(this).setWorldPosition(result.getHitPosition().getX(),
                                                                         result.getHitPosition().getZ());
@@ -241,5 +272,17 @@ public class Map {
                 .thenComparing(marker -> ((Marker) marker).getRadius())).orElse(null);
     }
 
-   private record PageId(String name, int no){}
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public double getActivationRadius() {
+        return activationRadius;
+    }
+
+    public List<String> getPages() {
+        return pages;
+    }
+
+    private record PageId(String name, int no){}
 }

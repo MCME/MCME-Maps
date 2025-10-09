@@ -120,7 +120,7 @@ public class MapDisplay implements Listener {
 
     @EventHandler
     public void playerInteract(PlayerInteractAtEntityEvent event) {
-        if(event.getRightClicked().equals(map.getEntity())) {
+        if(event.getRightClicked().equals(map.getMapEntity())) {
             Player player = event.getPlayer();
             Marker marker = markers.get(player);
             if(marker != null) {
