@@ -3,10 +3,19 @@ package com.mcmiddleearth.mapInteraction;
 import com.mcmiddleearth.base.bukkit.AbstractPaperPlugin;
 import com.mcmiddleearth.base.core.message.Message;
 import com.mcmiddleearth.mapInteraction.map.MapManager;
+import com.mcmiddleearth.mapInteraction.map.animation.AnimationListener;
+import com.ticxo.modelengine.api.ModelEngineAPI;
+import com.ticxo.modelengine.api.events.ModelRegistrationEvent;
+import com.ticxo.modelengine.api.generator.ModelGenerator;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import org.bukkit.Bukkit;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 
-public final class MapsPlugin extends AbstractPaperPlugin {
+import java.util.logging.Logger;
+
+public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
     private static MapsPlugin plugin;
 
@@ -21,7 +30,10 @@ public final class MapsPlugin extends AbstractPaperPlugin {
     public void enable() {
         plugin = this;
         saveDefaultConfig();
-        mapManager = new MapManager();
+        //wait for ModelEngine to finish model loading
+        //mapManager = new MapManager();
+        Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register( Commands.literal("mcmemaps")
                     .then(Commands.literal("reload")
@@ -31,6 +43,17 @@ public final class MapsPlugin extends AbstractPaperPlugin {
                             }))
                     .build());
         });
+    }
+
+    @EventHandler
+    public void onModelEngineLoad(ModelRegistrationEvent event) {
+        if(event.getPhase().equals(ModelGenerator.Phase.FINISHED)) {
+            Bukkit.getScheduler().runTask(this, () -> {
+                this.getMcmeLogger().info("Loading maps...");
+                mapManager = new MapManager();
+                this.getMcmeLogger().info("Finished map loading.");
+            });
+        }
     }
 
     @Override

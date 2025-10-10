@@ -16,6 +16,33 @@ maps:
         x: -4073
         z: -4335
     marker_radius: 0.1
+    activation_coordinates:
+      pos1:
+        x: -4077
+        y: -60
+        z: -4338
+      pos2:
+        x: -4073
+        y: -60
+        z: -4335
+    next_coordinates:
+      pos1:
+        x: -4077
+        y: -60
+        z: -4338
+      pos2:
+        x: -4073
+        y: -60
+        z: -4335
+    previous_coordinates:
+      pos1:
+        x: -4077
+        y: -60
+        z: -4338
+      pos2:
+        x: -4073
+        y: -60
+        z: -4335
     pages:
       The Shire:
         no: 1
