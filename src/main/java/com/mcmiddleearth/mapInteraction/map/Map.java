@@ -22,7 +22,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -53,6 +52,8 @@ public class Map {
 
     public Map(ConfigurationSection mapConfig, ConfigurationSection worldConfig) {
         this.config = mapConfig;
+        // add saved location
+        // add loadMap and UnloadMap (= remove) methods.
         activationRadius = worldConfig.getDouble("activationRange",10);
         ConfigurationSection pagesConfig = mapConfig.getConfigurationSection("pages");
         ConfigurationSection worldSection = worldConfig.getConfigurationSection("world_coordinates");
@@ -83,6 +84,7 @@ public class Map {
             mapEntity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
             mapEntity.setInteractionHeight((float) 0.1);
             mapEntity.setInteractionWidth((float) Math.max(xSize, zSize));
+            mapEntity.setPersistent(true);
 
             ArrayList<PageId> ids = new ArrayList<>();
             for(String pageName: pagesConfig.getKeys(false)) {
@@ -241,8 +243,18 @@ Logger.getGlobal().info("Load next and previous");
             listener.clear();
             HandlerList.unregisterAll(listener);
         }
-        animationEntity.markRemoved();
-        activationEntity.remove();
+        if(animationEntity != null) {
+            animationEntity.markRemoved();
+        }
+        if(activationEntity != null) {
+            activationEntity.remove();
+        }
+        if(nextPageEntity != null) {
+            nextPageEntity.remove();
+        }
+        if(previousPageEntity != null) {
+            previousPageEntity.remove();
+        }
     }
 
     public Transformation getTransformation() {
@@ -343,9 +355,13 @@ Logger.getGlobal().info("Load next and previous");
         float height = (float) (yMax - yMin);
         //nextButton = readBoundingBox(worldConfig.getConfigurationSection("next_coordinates"));
         //previousButton = readBoundingBox(worldConfig.getConfigurationSection("previous_coordinates"));
+
+        world.getNearbyEntitiesByType(Interaction.class, center,Math.max(width/2, height/2)).forEach(Entity::remove);
+
         Interaction entity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
         entity.setInteractionHeight(height);
         entity.setInteractionWidth(width);
+        entity.setPersistent(true);
         return entity;
     }
 

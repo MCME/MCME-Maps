@@ -4,16 +4,18 @@ import com.mcmiddleearth.base.bukkit.AbstractPaperPlugin;
 import com.mcmiddleearth.base.core.message.Message;
 import com.mcmiddleearth.mapInteraction.map.MapManager;
 import com.mcmiddleearth.mapInteraction.map.animation.AnimationListener;
-import com.ticxo.modelengine.api.ModelEngineAPI;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.ticxo.modelengine.api.events.ModelRegistrationEvent;
 import com.ticxo.modelengine.api.generator.ModelGenerator;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-
-import java.util.logging.Logger;
 
 public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
@@ -36,11 +38,22 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register( Commands.literal("mcmemaps")
+                    .requires(source -> source.getSender().hasPermission("mcmemaps.manager"))
                     .then(Commands.literal("reload")
                             .executes(context -> {
                                 mapManager.reload();
                                 return 0;
                             }))
+                    .then(Commands.literal("cleanup")
+                            .then(Commands.argument("radius", IntegerArgumentType.integer(0,10))
+                                    .requires(source -> source.getSender() instanceof Player)
+                                    .executes(context -> {
+                                        Location loc = ((Player)context.getSource().getSender()).getLocation();
+                                        loc.getWorld().getNearbyEntitiesByType(Interaction.class,
+                                                loc,context.getArgument("radius",Integer.class))
+                                                .forEach(Entity::remove);
+                                        return 0;
+                                    })))
                     .build());
         });
     }
@@ -48,11 +61,11 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
     @EventHandler
     public void onModelEngineLoad(ModelRegistrationEvent event) {
         if(event.getPhase().equals(ModelGenerator.Phase.FINISHED)) {
-            Bukkit.getScheduler().runTask(this, () -> {
+            Bukkit.getScheduler().runTaskLater(this, () -> {
                 this.getMcmeLogger().info("Loading maps...");
                 mapManager = new MapManager();
                 this.getMcmeLogger().info("Finished map loading.");
-            });
+            },600);
         }
     }
 

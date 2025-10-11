@@ -11,6 +11,8 @@ public class MapManager {
 
     public MapManager() {
         loadMaps();
+        //TaskTimer every second to check if chunk of a map is loaded -> load map (if not already loaded)
+        // also check if no player within like 4 chunks -> unload map (if not already unloaded
     }
 
     private void loadMaps() {
