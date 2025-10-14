@@ -1,18 +1,42 @@
 package com.mcmiddleearth.mapInteraction.map;
 
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
+import org.bukkit.Chunk;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 
 public class MapManager {
 
     private final HashMap<String, Map> maps = new HashMap<>();
+    private final BukkitTask task;
 
     public MapManager() {
-        loadMaps();
+        //loadMaps();
         //TaskTimer every second to check if chunk of a map is loaded -> load map (if not already loaded)
         // also check if no player within like 4 chunks -> unload map (if not already unloaded
+        task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                maps.forEach((name, map) -> {
+                    if(!map.isLoaded() && map.areAllChunksLoaded()) {
+                        map.loadMap();
+                    }
+                });
+            }
+        }.runTaskTimer(MapsPlugin.getPlugin(),200, 40);
+    }
+
+    public void checkUnload(Chunk chunk) {
+        maps.forEach((name,map) -> {
+            if(map.isLoaded() && map.isInside(chunk)) {
+                map.unloadMap();
+            }
+        });
     }
 
     private void loadMaps() {
@@ -45,7 +69,8 @@ public class MapManager {
     }
 
     public void disable() {
-        maps.forEach((mapName, map) -> map.remove());
+        maps.forEach((mapName, map) -> map.unloadMap());
+        task.cancel();
     }
 
     public HashMap<String, Map> getMaps() {

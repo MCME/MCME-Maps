@@ -16,6 +16,7 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.world.ChunkUnloadEvent;
 
 public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
@@ -32,8 +33,6 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
     public void enable() {
         plugin = this;
         saveDefaultConfig();
-        //wait for ModelEngine to finish model loading
-        //mapManager = new MapManager();
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
@@ -67,6 +66,11 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
                 this.getMcmeLogger().info("Finished map loading.");
             },600);
         }
+    }
+
+    @EventHandler
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        mapManager.checkUnload(event.getChunk());
     }
 
     @Override

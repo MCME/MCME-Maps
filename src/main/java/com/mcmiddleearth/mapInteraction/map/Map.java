@@ -12,6 +12,7 @@ import com.ticxo.modelengine.api.model.ActiveModel;
 import com.ticxo.modelengine.api.model.ModeledEntity;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
@@ -31,7 +32,7 @@ import java.util.logging.Logger;
 
 public class Map {
 
-    private final ConfigurationSection config;
+    private final ConfigurationSection mapConfig, worldConfig;
 
     private Interaction mapEntity, activationEntity, previousPageEntity, nextPageEntity;
     private ModeledEntity animationEntity;
@@ -39,6 +40,9 @@ public class Map {
     //private BoundingBox nextButton, previousButton;
 
     private final double activationRadius;
+    private final Location center;
+
+    private boolean loaded;
 
     private final Set<Marker> mapMarkerSet = new HashSet<>();
 
@@ -51,54 +55,62 @@ public class Map {
     private MapDisplay listener;
 
     public Map(ConfigurationSection mapConfig, ConfigurationSection worldConfig) {
-        this.config = mapConfig;
-        // add saved location
-        // add loadMap and UnloadMap (= remove) methods.
+        loaded = false;
+        this.mapConfig = mapConfig;
+        this.worldConfig = worldConfig;
         activationRadius = worldConfig.getDouble("activationRange",10);
-        ConfigurationSection pagesConfig = mapConfig.getConfigurationSection("pages");
+
         ConfigurationSection worldSection = worldConfig.getConfigurationSection("world_coordinates");
-        ConfigurationSection activationSection = worldConfig.getConfigurationSection("activation_coordinates");
-        if (pagesConfig != null && worldSection != null && activationSection != null) {
 
-            ConfigurationSection worldPos1 = worldSection.getConfigurationSection("pos1");
-            ConfigurationSection worldPos2 = worldSection.getConfigurationSection("pos2");
+        assert worldSection!=null;
 
-            assert worldPos1 != null;
-            assert worldPos2 != null;
+        ConfigurationSection worldPos1 = worldSection.getConfigurationSection("pos1");
+        ConfigurationSection worldPos2 = worldSection.getConfigurationSection("pos2");
 
-            xWorldMin = worldPos1.getDouble("x");
-            xWorldMax = worldPos2.getDouble("x");
-            zWorldMin = worldPos1.getDouble("z");
-            zWorldMax = worldPos2.getDouble("z");
+        assert worldPos1 != null;
+        assert worldPos2 != null;
 
-            World world = Bukkit.getWorld(Objects.requireNonNull(worldConfig.getString("world")));
-            Location center = new Location(world, (xWorldMax + xWorldMin) / 2,
-                    worldSection.getDouble("y"),
-                    (zWorldMax + zWorldMin) / 2);
+        xWorldMin = worldPos1.getDouble("x");
+        xWorldMax = worldPos2.getDouble("x");
+        zWorldMin = worldPos1.getDouble("z");
+        zWorldMax = worldPos2.getDouble("z");
 
-            assert world != null;
+        World world = Bukkit.getWorld(Objects.requireNonNull(worldConfig.getString("world")));
+        center = new Location(world, (xWorldMax + xWorldMin) / 2,
+                worldSection.getDouble("y"),
+                (zWorldMax + zWorldMin) / 2);
 
-            double xSize = xWorldMax - xWorldMin;
-            double zSize = zWorldMax - zWorldMin;
+        assert world != null;
 
-            mapEntity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
-            mapEntity.setInteractionHeight((float) 0.1);
-            mapEntity.setInteractionWidth((float) Math.max(xSize, zSize));
-            mapEntity.setPersistent(true);
-
+        ConfigurationSection pagesConfig = mapConfig.getConfigurationSection("pages");
+        if(pagesConfig!=null) {
             ArrayList<PageId> ids = new ArrayList<>();
-            for(String pageName: pagesConfig.getKeys(false)) {
+            for (String pageName : pagesConfig.getKeys(false)) {
                 ConfigurationSection pageConfig = pagesConfig.getConfigurationSection(pageName);
-                if(pageConfig!=null) {
-                    ids.add(new PageId(pageName, pageConfig.getInt("no",0)));
+                if (pageConfig != null) {
+                    ids.add(new PageId(pageName, pageConfig.getInt("no", 0)));
                 }
             }
             pages = ids.stream().sorted(Comparator.comparingInt(PageId::no)).map(pageId -> pageId.name).toList();
 
-            //loadPage(0);
-            //don't load page on creation
-            //instead create One interaction entity
-            // Animation depends on clicked position (activation, pageleft pageright)
+        }
+        // add saved location
+        // add loadMap and UnloadMap (= remove) methods.
+    }
+
+    public void loadMap() {
+        ConfigurationSection activationSection = worldConfig.getConfigurationSection("activation_coordinates");
+        if (activationSection != null) {
+
+            double xSize = xWorldMax - xWorldMin;
+            double zSize = zWorldMax - zWorldMin;
+
+            World world = center.getWorld();
+
+            mapEntity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
+            mapEntity.setInteractionHeight((float) 0.1);
+            mapEntity.setInteractionWidth((float) Math.max(xSize, zSize));
+            mapEntity.setPersistent(false);
 
             activationEntity = loadControlEntity(activationSection, world);
 Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
@@ -117,7 +129,7 @@ Logger.getGlobal().info("Load next and previous");
             animationEntity = ModelEngineAPI.createModeledEntity(activationEntity);
             animationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_and_map"));
             animationEntity.addModel(animationModel, true);
-
+            loaded = true;
         } else {
             MapsPlugin.getInstance().getMcmeLogger().warn("Invalid map configuration.");
         }
@@ -136,7 +148,7 @@ Logger.getGlobal().info("Load next and previous");
             String pageName = pages.get(page);
             currentPage = page;
 
-            ConfigurationSection pagesConfig = config.getConfigurationSection("pages");
+            ConfigurationSection pagesConfig = mapConfig.getConfigurationSection("pages");
             assert pagesConfig != null;
             ConfigurationSection pageConfig =  pagesConfig.getConfigurationSection(pageName);
             assert pageConfig != null;
@@ -221,7 +233,7 @@ Logger.getGlobal().info("Load next and previous");
     }
 
     private double getMarkerRadius(ConfigurationSection section) {
-        return section.getDouble("radius", config.getDouble("marker_radius", 0.1));
+        return section.getDouble("radius", mapConfig.getDouble("marker_radius", 0.1));
     }
 
     public void clearPage() {
@@ -233,7 +245,8 @@ Logger.getGlobal().info("Load next and previous");
         currentPage = -1;
     }
 
-    public void remove() {
+    public void unloadMap() {
+        loaded = false;
         clearPage();
         if(mapEntity != null) {
             mapEntity.remove();
@@ -361,8 +374,36 @@ Logger.getGlobal().info("Load next and previous");
         Interaction entity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
         entity.setInteractionHeight(height);
         entity.setInteractionWidth(width);
-        entity.setPersistent(true);
+        entity.setPersistent(false);
         return entity;
+    }
+
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    public boolean isInside(Chunk chunk) {
+        return chunk.getWorld().equals(center.getWorld())
+                && chunk.getChunkKey() == center.getChunk().getChunkKey();
+    }
+
+    public boolean areAllChunksLoaded() {
+        Location min = center.clone();
+        min.setX(xWorldMin);
+        min.setZ(zWorldMin);
+        Location max = center.clone();
+        max.setX(xWorldMin);
+        max.setZ(zWorldMin);
+        Chunk minChunk = min.getChunk();
+        Chunk maxChunk = max.getChunk();
+        for(int i = minChunk.getX() - 1; i < maxChunk.getX() + 1; i++) {
+            for(int j = minChunk.getZ() - 1; i < maxChunk.getZ() + 1; i++) {
+                if (!min.getWorld().getChunkAt(i, j).isLoaded()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 /*    public boolean isPreviousPageButton(@NotNull Vector clickedPosition) {
