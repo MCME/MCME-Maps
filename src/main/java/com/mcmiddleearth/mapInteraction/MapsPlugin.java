@@ -70,7 +70,8 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
     @EventHandler
     public void onChunkUnload(ChunkUnloadEvent event) {
-        mapManager.checkUnload(event.getChunk());
+        if(mapManager!=null)
+            mapManager.checkUnload(event.getChunk());
     }
 
     @Override

@@ -3,12 +3,11 @@ package com.mcmiddleearth.mapInteraction.map;
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
 import org.bukkit.Chunk;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 public class MapManager {
 
@@ -16,14 +15,16 @@ public class MapManager {
     private final BukkitTask task;
 
     public MapManager() {
-        //loadMaps();
+        createMaps();
         //TaskTimer every second to check if chunk of a map is loaded -> load map (if not already loaded)
         // also check if no player within like 4 chunks -> unload map (if not already unloaded
         task = new BukkitRunnable() {
             @Override
             public void run() {
                 maps.forEach((name, map) -> {
+Logger.getGlobal().info("Map: "+name+" Loaded: "+map.isLoaded()+" AllChunks: "+map.areAllChunksLoaded());
                     if(!map.isLoaded() && map.areAllChunksLoaded()) {
+Logger.getGlobal().info("Loading: "+name);
                         map.loadMap();
                     }
                 });
@@ -34,12 +35,13 @@ public class MapManager {
     public void checkUnload(Chunk chunk) {
         maps.forEach((name,map) -> {
             if(map.isLoaded() && map.isInside(chunk)) {
+Logger.getGlobal().info("UnLoading: "+name);
                 map.unloadMap();
             }
         });
     }
 
-    private void loadMaps() {
+    private void createMaps() {
         ConfigurationSection mapsConfig = MapsPlugin.getInstance().getConfig().getConfigurationSection("maps");
         if(mapsConfig != null) {
             for(String mapName : mapsConfig.getKeys(false)) {
@@ -65,7 +67,7 @@ public class MapManager {
         disable();
         maps.clear();
         MapsPlugin.getInstance().reloadConfig();
-        loadMaps();
+        createMaps();
     }
 
     public void disable() {
