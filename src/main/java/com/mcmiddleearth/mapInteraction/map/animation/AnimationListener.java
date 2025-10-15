@@ -46,6 +46,9 @@ Logger.getGlobal().info("open");
                             if (clicked.getWorld()
                                     .getNearbyEntitiesByType(Player.class, map.getCenter(), map.getActivationRadius()).isEmpty()) {
                                 map.getAnimationModel().getAnimationHandler().forceStopAnimation("open");
+                                for(int i = 0; i < map.getPages().size(); i++) {
+                                    map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+i);
+                                }
                                 //map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
                                 map.clearPage();
 map.getAnimationModel().getAnimationHandler().getAnimations().forEach(((name, anim) -> Logger.getGlobal().info(name)));
