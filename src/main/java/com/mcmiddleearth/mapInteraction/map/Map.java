@@ -383,8 +383,14 @@ Logger.getGlobal().info("Load next and previous");
     }
 
     public boolean isInside(Chunk chunk) {
-        return chunk.getWorld().equals(center.getWorld())
-                && chunk.getChunkKey() == center.getChunk().getChunkKey();
+        if(chunk.getWorld().equals(center.getWorld())) {
+            for(Chunk search: getChunkList()) {
+                if(search.getChunkKey() == chunk.getChunkKey()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean areAllChunksLoaded() {
@@ -392,18 +398,43 @@ Logger.getGlobal().info("Load next and previous");
         min.setX(xWorldMin);
         min.setZ(zWorldMin);
         Location max = center.clone();
-        max.setX(xWorldMin);
-        max.setZ(zWorldMin);
+        max.setX(xWorldMax);
+        max.setZ(zWorldMax);
         Chunk minChunk = min.getChunk();
         Chunk maxChunk = max.getChunk();
-        for(int i = minChunk.getX() - 1; i < maxChunk.getX() + 1; i++) {
-            for(int j = minChunk.getZ() - 1; i < maxChunk.getZ() + 1; i++) {
-                if (!min.getWorld().getChunkAt(i, j).isLoaded()) {
+/*Logger.getGlobal().info("min: "+minChunk.getX()+" "+minChunk.getZ());
+Logger.getGlobal().info("max: "+maxChunk.getX()+" "+maxChunk.getZ());
+Logger.getGlobal().info("loaded: "+min.getWorld().isChunkLoaded(100,100));
+        Chunk chunk = min.getWorld().getChunkAt(100,100);
+Logger.getGlobal().info("loaded: "+min.getWorld().isChunkLoaded(100,100));*/
+        for(int i = minChunk.getX() - 1; i <= maxChunk.getX() + 1; i++) {
+            for(int j = minChunk.getZ() - 1; j <= maxChunk.getZ() + 1; j++) {
+//Logger.getGlobal().info("Check chunk at: "+i+" "+j);
+                if (!min.getWorld().isChunkLoaded(i, j)) {
                     return false;
                 }
             }
         }
         return true;
+    }
+
+    private Set<Chunk> getChunkList() {
+        Set<Chunk> result = new HashSet<>();
+        if(center != null) result.add(center.getChunk());
+        if(activationEntity != null) result.add(activationEntity.getChunk());
+        if(nextPageEntity != null) result.add(nextPageEntity.getChunk());
+        if(previousPageEntity != null) result.add(previousPageEntity.getChunk());
+        /*Location min = center.clone();
+        min.setX(xWorldMin);
+        min.setZ(zWorldMin);
+        Location max = center.clone();
+        max.setX(xWorldMin);
+        max.setZ(zWorldMin);
+        while(min.getX() <= max.getX()) {
+            result.add(min.getChunk());
+            min = min.add(new Vector(16d,0d,0d));
+        }*/
+        return result;
     }
 
 /*    public boolean isPreviousPageButton(@NotNull Vector clickedPosition) {

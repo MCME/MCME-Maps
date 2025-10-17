@@ -12,24 +12,28 @@ import java.util.logging.Logger;
 public class MapManager {
 
     private final HashMap<String, Map> maps = new HashMap<>();
-    private final BukkitTask task;
+    private BukkitTask task;
 
     public MapManager() {
         createMaps();
+        startTask();
+    }
+
+    private void startTask() {
         //TaskTimer every second to check if chunk of a map is loaded -> load map (if not already loaded)
         // also check if no player within like 4 chunks -> unload map (if not already unloaded
         task = new BukkitRunnable() {
             @Override
             public void run() {
                 maps.forEach((name, map) -> {
-Logger.getGlobal().info("Map: "+name+" Loaded: "+map.isLoaded()+" AllChunks: "+map.areAllChunksLoaded());
+//Logger.getGlobal().info("Map: "+name+" Loaded: "+map.isLoaded()+" AllChunks: "+map.areAllChunksLoaded());
                     if(!map.isLoaded() && map.areAllChunksLoaded()) {
 Logger.getGlobal().info("Loading: "+name);
                         map.loadMap();
                     }
                 });
             }
-        }.runTaskTimer(MapsPlugin.getPlugin(),200, 40);
+        }.runTaskTimer(MapsPlugin.getPlugin(),40, 40);
     }
 
     public void checkUnload(Chunk chunk) {
@@ -68,6 +72,7 @@ Logger.getGlobal().info("UnLoading: "+name);
         maps.clear();
         MapsPlugin.getInstance().reloadConfig();
         createMaps();
+        startTask();
     }
 
     public void disable() {

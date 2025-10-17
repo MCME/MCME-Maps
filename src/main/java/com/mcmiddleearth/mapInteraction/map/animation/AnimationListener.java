@@ -45,10 +45,12 @@ Logger.getGlobal().info("open");
                         public void run() {
                             if (clicked.getWorld()
                                     .getNearbyEntitiesByType(Player.class, map.getCenter(), map.getActivationRadius()).isEmpty()) {
-                                map.getAnimationModel().getAnimationHandler().forceStopAnimation("open");
+                                /*map.getAnimationModel().getAnimationHandler().forceStopAnimation("open");
                                 for(int i = 0; i < map.getPages().size(); i++) {
                                     map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+i);
-                                }
+                                }*/
+                                map.getAnimationModel().getAnimationHandler().forceStopAllAnimations();
+                                map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
                                 //map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
                                 map.clearPage();
 map.getAnimationModel().getAnimationHandler().getAnimations().forEach(((name, anim) -> Logger.getGlobal().info(name)));
@@ -58,11 +60,13 @@ Logger.getGlobal().info("close");
                         }
                     }.runTaskTimer(MapsPlugin.getPlugin(), 40, 40);
                 } else if(currentPage > 0 && clicked.equals(map.getPreviousPageEntity())) {
+                    map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+(currentPage));
                     currentPage--;
                     map.loadPage(currentPage);
                     map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0.1, 2, 1, true);
 Logger.getGlobal().info("previous ");
                 } else if(currentPage < map.getPages().size()-1  && clicked.equals(map.getNextPageEntity())) {
+                    map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+(currentPage));
                     currentPage++;
                     map.loadPage(currentPage);
                     map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0.1, 2, 1, true);
