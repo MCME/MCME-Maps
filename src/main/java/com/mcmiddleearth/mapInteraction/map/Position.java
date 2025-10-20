@@ -14,8 +14,8 @@ public class Position {
         this.mapX = mapX;
         this.mapZ = mapZ;
         Transformation transformation = map.getTransformation();
-        this.worldX = transformation.getWorldX(mapX);
-        this.worldZ = transformation.getWorldZ(mapZ);
+        this.worldX = transformation.getWorldX(mapX, mapZ);
+        this.worldZ = transformation.getWorldZ(mapX, mapZ);
         return this;
     }
 
@@ -23,8 +23,8 @@ public class Position {
         this.worldX = worldX;
         this.worldZ = worldZ;
         Transformation transformation = map.getTransformation();
-        this.mapX = transformation.getMapX(worldX);
-        this.mapZ = transformation.getMapZ(worldZ);
+        this.mapX = transformation.getMapX(worldX, worldZ);
+        this.mapZ = transformation.getMapZ(worldX, worldZ);
         return this;
     }
 

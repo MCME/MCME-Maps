@@ -39,7 +39,7 @@ Logger.getGlobal().info("page: "+map.getCurrentPage());
                 if(currentPage == -1 && clicked.equals(map.getActivationEntity())) {
 Logger.getGlobal().info("open");
                     map.loadPage(0);
-                    map.getAnimationModel().getAnimationHandler().playAnimation("open", 0.1, 2, 1, true);
+                    map.getAnimationModel().getAnimationHandler().playAnimation("open", 0, 2, 1, true);
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -50,7 +50,7 @@ Logger.getGlobal().info("open");
                                     map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+i);
                                 }*/
                                 map.getAnimationModel().getAnimationHandler().forceStopAllAnimations();
-                                map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
+                                map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0, 2, 1, true);
                                 //map.getAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
                                 map.clearPage();
 map.getAnimationModel().getAnimationHandler().getAnimations().forEach(((name, anim) -> Logger.getGlobal().info(name)));
@@ -59,17 +59,23 @@ Logger.getGlobal().info("close");
                             }
                         }
                     }.runTaskTimer(MapsPlugin.getPlugin(), 40, 40);
-                } else if(currentPage > 0 && clicked.equals(map.getPreviousPageEntity())) {
+                } else if(clicked.equals(map.getPreviousPageEntity())) {
                     map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+(currentPage));
                     currentPage--;
+                    if(currentPage < 0) {
+                        currentPage = map.getPages().size()-1;
+                    }
                     map.loadPage(currentPage);
-                    map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0.1, 2, 1, true);
+                    map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0, 2, 1, true);
 Logger.getGlobal().info("previous ");
-                } else if(currentPage < map.getPages().size()-1  && clicked.equals(map.getNextPageEntity())) {
+                } else if(clicked.equals(map.getNextPageEntity())) {
                     map.getAnimationModel().getAnimationHandler().forceStopAnimation("page"+(currentPage));
                     currentPage++;
+                    if(currentPage > map.getPages().size()-1) {
+                        currentPage = 0;
+                    }
                     map.loadPage(currentPage);
-                    map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0.1, 2, 1, true);
+                    map.getAnimationModel().getAnimationHandler().playAnimation("page"+(currentPage), 0, 2, 1, true);
 Logger.getGlobal().info("next ");
                 }
                 return;

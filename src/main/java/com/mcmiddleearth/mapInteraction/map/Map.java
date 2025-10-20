@@ -49,8 +49,12 @@ public class Map {
     private List<String> pages;
     private int currentPage = -1;
 
-    private double xWorldMin, xWorldMax, zWorldMin, zWorldMax;
+    private final double xWorldMin;
+    private final double xWorldMax;
+    private final double zWorldMin;
+    private final double zWorldMax;
     private Transformation transformation;
+    private Transformation.Rotation rotation;
 
     private MapDisplay listener;
 
@@ -92,7 +96,7 @@ public class Map {
                 }
             }
             pages = ids.stream().sorted(Comparator.comparingInt(PageId::no)).map(pageId -> pageId.name).toList();
-
+            rotation = Transformation.Rotation.valueOf(pagesConfig.getString("rotation","NONE"));
         }
         // add saved location
         // add loadMap and UnloadMap (= remove) methods.
@@ -113,6 +117,12 @@ public class Map {
             mapEntity.setPersistent(false);
 
             activationEntity = loadControlEntity(activationSection, world);
+            switch(rotation) {
+                case LEFT_90 -> activationEntity.setRotation(-90,0);
+                case RIGHT_90 -> activationEntity.setRotation(90,0);
+                case TURN_180 -> activationEntity.setRotation(180,0);
+            }
+
 Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
 Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
 Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
@@ -179,7 +189,7 @@ Logger.getGlobal().info("Load next and previous");
             }
 
             transformation = new Transformation(xMapMin, zMapMin, xMapMax, zMapMax,
-                    xWorldMin, zWorldMin, xWorldMax, zWorldMax);
+                    xWorldMin, zWorldMin, xWorldMax, zWorldMax, rotation);
 
             ConfigurationSection linkConfig = pageConfig.getConfigurationSection("links");
             if(linkConfig != null) {
