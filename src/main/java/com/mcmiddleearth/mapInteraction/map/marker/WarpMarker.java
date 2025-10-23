@@ -7,7 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
 
-public class WarpMarker extends com.mcmiddleearth.mapInteraction.map.marker.Marker {
+public class WarpMarker extends TextMarker {
 
     private final WarpData warpData;
 

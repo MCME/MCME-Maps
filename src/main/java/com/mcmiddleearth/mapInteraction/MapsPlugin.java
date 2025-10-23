@@ -62,6 +62,10 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
     public void onModelEngineLoad(ModelRegistrationEvent event) {
         if(event.getPhase().equals(ModelGenerator.Phase.FINISHED)) {
             Bukkit.getScheduler().runTaskLater(this, () -> {
+                if(mapManager != null) {
+                    this.getMcmeLogger().info("Unloading maps...");
+                    mapManager.disable();
+                }
                 this.getMcmeLogger().info("Loading maps...");
                 mapManager = new MapManager();
                 this.getMcmeLogger().info("Finished map loading.");

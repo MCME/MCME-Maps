@@ -8,8 +8,13 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -22,73 +27,91 @@ public class MapDisplay implements Listener {
     private final Map map;
     private final HashMap<Player, TextDisplay> coordEntities = new HashMap<>();
     private final HashMap<Player, Marker> markers = new HashMap<>();
+    private final BukkitTask task;
 
     private final static boolean showCoordinates = false;
 
     public MapDisplay(Map map) {
         this.map = map;
+        task = new BukkitRunnable()  {
+            @Override
+            public void run() {
+                map.getCenter().getWorld().getNearbyEntitiesByType(Player.class, map.getCenter(), 6).forEach(player -> {
+                    playerMove(player);
+                });
+            }
+        }.runTaskTimer(MapsPlugin.getPlugin(), 0, 5);
     }
 
     public void clear() {
         coordEntities.forEach((player, entity) -> entity.remove());
         coordEntities.clear();
         markers.forEach((player, marker) -> {
-            player.hideEntity(MapsPlugin.getInstance(),marker.getEntity());
+            player.hideEntity(MapsPlugin.getInstance(), marker.getEntity());
         });
         markers.clear();
+        task.cancel();
     }
-    @EventHandler
-    public void playerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
+
+    //@EventHandler
+    //public void playerMove(PlayerMoveEvent event) {
+    //    Player player = event.getPlayer();
+    public void playerMove(Player player) {
         if(player.getLocation().distance(map.getCenter()) < 8) {
-            Position position = map.getTargetPosition(player);
-            if(position != null) {
-                Marker marker = map.getMarker(position);
-                Marker lastMarker = markers.get(player);
-                if(marker != null) {
-                    if(lastMarker != marker) {
-                        if(lastMarker != null) {
+            Map.RayTraceTarget rayTraceTarget = map.getRayTraceTarget(player);
+            if(rayTraceTarget != null) {
+                Position position = rayTraceTarget.position();
+                Marker marker = rayTraceTarget.marker();
+                if (marker != null) {
+                    //TextMarker marker = map.getMarker(position);
+                    Marker lastMarker = markers.get(player);
+                    //if(marker != null) {
+                    if (lastMarker != marker) {
+                        if (lastMarker != null) {
                             player.hideEntity(MapsPlugin.getInstance(), lastMarker.getEntity());
                         }
-                        player.showEntity(MapsPlugin.getInstance(),marker.getEntity());
+                        player.showEntity(MapsPlugin.getInstance(), marker.getEntity());
                         markers.put(player, marker);
                     }
+                    /*} else {
+                        if(lastMarker != null) {
+                            player.hideEntity(MapsPlugin.getInstance(),lastMarker.getEntity());
+                            markers.remove(player);
+                        }
+                    }*/
                 } else {
-                    if(lastMarker != null) {
-                        player.hideEntity(MapsPlugin.getInstance(),lastMarker.getEntity());
-                        markers.remove(player);
-                    }
+                    hideMarker(player);
                 }
-                if(showCoordinates) {
+                if (showCoordinates) {
                     TextDisplay entity = coordEntities.get(player);
-                    Location entityPosition = new Location(player.getWorld(), position.getWorldX(),
-                            map.getCenter().getY() + 1,
-                            position.getWorldZ());
-                    if (entity == null) {
-                        entity = (TextDisplay) player.getWorld()
-                                .spawnEntity(entityPosition,
-                                        EntityType.TEXT_DISPLAY);
-                        coordEntities.put(player, entity);
-                        entity.setShadowed(true);
-                        entity.setBillboard(Display.Billboard.CENTER);
-                        entity.setTransformation(new Transformation(new Vector3f(0, 0, 0),
-                                new Quaternionf(0, 0, 0, 1),
-                                new Vector3f(0.5f, 0.5f, 0.5f),
-                                new Quaternionf(0, 0, 0, 1)));
+                    if (position != null) {
+                        Location entityPosition = new Location(player.getWorld(), position.getWorldX(),
+                                map.getCenter().getY() + 1,
+                                position.getWorldZ());
+                        if (entity == null) {
+                            entity = (TextDisplay) player.getWorld()
+                                    .spawnEntity(entityPosition,
+                                            EntityType.TEXT_DISPLAY);
+                            coordEntities.put(player, entity);
+                            entity.setShadowed(true);
+                            entity.setBillboard(Display.Billboard.CENTER);
+                            entity.setTransformation(new Transformation(new Vector3f(0, 0, 0),
+                                    new Quaternionf(0, 0, 0, 1),
+                                    new Vector3f(0.5f, 0.5f, 0.5f),
+                                    new Quaternionf(0, 0, 0, 1)));
+                        } else {
+                            entity.teleport(entityPosition);
+                        }
+                        entity.text(Component.text(String.format("x: %1$.2f  z: %2$.2f", position.getMapX(), position.getMapZ())));
                     } else {
-                        entity.teleport(entityPosition);
+                        if (entity != null) {
+                            Logger.getGlobal().info("remove entity");
+                            coordEntities.remove(player);
+                            entity.remove();
+                        }
                     }
-                    entity.text(Component.text(String.format("x: %1$.2f  z: %2$.2f", position.getMapX(), position.getMapZ())));
                 }
             } else {
-                if(showCoordinates) {
-                    TextDisplay entity = coordEntities.get(player);
-                    if (entity != null) {
-                        Logger.getGlobal().info("remove entity");
-                        coordEntities.remove(player);
-                        entity.remove();
-                    }
-                }
                 hideMarker(player);
             }
         } else {
@@ -119,9 +142,24 @@ public class MapDisplay implements Listener {
     }
 
     @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        if(EquipmentSlot.HAND.equals(event.getHand())) {
+            RayTraceResult result = event.getPlayer().rayTraceEntities(5, true);
+Logger.getGlobal().info("Interact ray trace: " + result);
+            if (result != null && result.getHitEntity() != null) {
+Logger.getGlobal().info("Interact ray trace hit: " + result.getHitEntity());
+                handleInteract(event.getPlayer(), result.getHitEntity());
+            }
+        }
+    }
+
+    @EventHandler
     public void playerInteract(PlayerInteractAtEntityEvent event) {
-        if(event.getRightClicked().equals(map.getMapEntity())) {
-            Player player = event.getPlayer();
+        handleInteract(event.getPlayer(), event.getRightClicked());
+    }
+
+    private void handleInteract(Player player, Entity entity) {
+        if(entity.equals(map.getMapEntity())) {
             Marker marker = markers.get(player);
             if(marker != null) {
                 marker.handleInteract(player);

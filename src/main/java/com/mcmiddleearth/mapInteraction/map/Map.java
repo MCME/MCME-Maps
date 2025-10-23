@@ -2,9 +2,8 @@ package com.mcmiddleearth.mapInteraction.map;
 
 import com.google.gson.JsonParseException;
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
+import com.mcmiddleearth.mapInteraction.map.marker.*;
 import com.mcmiddleearth.mapInteraction.map.marker.Marker;
-import com.mcmiddleearth.mapInteraction.map.marker.PageMarker;
-import com.mcmiddleearth.mapInteraction.map.marker.WarpMarker;
 import com.mcmiddleearth.mapInteraction.warp.MyWarpDBConnector;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import com.ticxo.modelengine.api.ModelEngineAPI;
@@ -16,10 +15,7 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Interaction;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.HandlerList;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
@@ -34,9 +30,11 @@ public class Map {
 
     private final ConfigurationSection mapConfig, worldConfig;
 
-    private Interaction mapEntity, activationEntity, previousPageEntity, nextPageEntity;
-    private ModeledEntity animationEntity;
-    private ActiveModel animationModel;
+    private Interaction mapEntity;
+    private Interaction activationEntity, previousPageEntity, nextPageEntity, previousPageModelEntity, nextPageModelEntity;
+    private ItemMarker activationMarker, previousMarker, nextMarker;
+    private ModeledEntity mapAnimationEntity, nextAnimationEntity, previousAnimationEntity;
+    private ActiveModel mapAnimationModel;
     //private BoundingBox nextButton, previousButton;
 
     private final double activationRadius;
@@ -44,7 +42,7 @@ public class Map {
 
     private boolean loaded;
 
-    private final Set<Marker> mapMarkerSet = new HashSet<>();
+    private final Set<TextMarker> mapMarkerSet = new HashSet<>();
 
     private List<String> pages;
     private int currentPage = -1;
@@ -54,7 +52,7 @@ public class Map {
     private final double zWorldMin;
     private final double zWorldMax;
     private Transformation transformation;
-    private Transformation.Rotation rotation;
+    private final Transformation.Rotation rotation;
 
     private MapDisplay listener;
 
@@ -67,6 +65,8 @@ public class Map {
         ConfigurationSection worldSection = worldConfig.getConfigurationSection("world_coordinates");
 
         assert worldSection!=null;
+
+        rotation = Transformation.Rotation.valueOf(worldConfig.getString("rotation","NONE"));
 
         ConfigurationSection worldPos1 = worldSection.getConfigurationSection("pos1");
         ConfigurationSection worldPos2 = worldSection.getConfigurationSection("pos2");
@@ -96,7 +96,6 @@ public class Map {
                 }
             }
             pages = ids.stream().sorted(Comparator.comparingInt(PageId::no)).map(pageId -> pageId.name).toList();
-            rotation = Transformation.Rotation.valueOf(pagesConfig.getString("rotation","NONE"));
         }
         // add saved location
         // add loadMap and UnloadMap (= remove) methods.
@@ -116,29 +115,40 @@ public class Map {
             mapEntity.setInteractionWidth((float) Math.max(xSize, zSize));
             mapEntity.setPersistent(false);
 
-            activationEntity = loadControlEntity(activationSection, world);
-            switch(rotation) {
-                case LEFT_90 -> activationEntity.setRotation(-90,0);
-                case RIGHT_90 -> activationEntity.setRotation(90,0);
-                case TURN_180 -> activationEntity.setRotation(180,0);
-            }
+            activationEntity = loadControlEntity(activationSection, world, rotation);
+            nextPageModelEntity = loadControlEntity(activationSection, world, rotation);
+            previousPageModelEntity = loadControlEntity(activationSection, world, rotation);
 
-Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
-Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
-Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
+//Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
+//Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
+//Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
+//Logger.getGlobal().info("activation Entiry hitbox: "+activationEntity.getBoundingBox().getHeight()+" "+activationEntity.getBoundingBox().getWidthX()+" "+activationEntity.getBoundingBox().getWidthZ());
 
             ConfigurationSection nextSection = worldConfig.getConfigurationSection("next_coordinates");
             ConfigurationSection previousSection = worldConfig.getConfigurationSection("previous_coordinates");
 
             if(nextSection != null && previousSection!= null) {
 Logger.getGlobal().info("Load next and previous");
-                nextPageEntity = loadControlEntity(nextSection, world);
-                previousPageEntity = loadControlEntity(previousSection, world);
+                nextPageEntity = loadControlEntity(nextSection, world, rotation);
+                previousPageEntity = loadControlEntity(previousSection, world, rotation);
             }
 
-            animationEntity = ModelEngineAPI.createModeledEntity(activationEntity);
-            animationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_and_map"));
-            animationEntity.addModel(animationModel, true);
+            mapAnimationEntity = ModelEngineAPI.createModeledEntity(activationEntity);
+            mapAnimationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_and_map"));
+            mapAnimationEntity.addModel(mapAnimationModel, true);
+            nextAnimationEntity = ModelEngineAPI.createModeledEntity(nextPageModelEntity);
+            ActiveModel nextAnimationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_page_right"));
+            nextAnimationEntity.addModel(nextAnimationModel, true);
+            previousAnimationEntity = ModelEngineAPI.createModeledEntity(previousPageModelEntity);
+            ActiveModel previousAnimationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_page_left"));
+            previousAnimationEntity.addModel(previousAnimationModel, true);
+
+            //nextPageEntity.setRotation(90, 22.5f);
+
+            activationMarker = new ItemMarker(activationEntity, "book_transparent", rotation);
+            nextMarker = new ItemMarker(nextPageModelEntity, "book_page_right", rotation);
+            previousMarker = new ItemMarker(previousPageModelEntity, "book_page_left", rotation);
+
             loaded = true;
         } else {
             MapsPlugin.getInstance().getMcmeLogger().warn("Invalid map configuration.");
@@ -200,7 +210,7 @@ Logger.getGlobal().info("Load next and previous");
                         int z = section.getInt("z");
                         double radius = getMarkerRadius(section);
                         Position  position = new Position(this).setMapPosition(x, z);
-                        Marker marker = new PageMarker(this, position, linkTarget);
+                        TextMarker marker = new PageMarker(this, position, linkTarget);
                         marker.setRadius(radius);
                         mapMarkerSet.add(marker);
                     }
@@ -217,7 +227,7 @@ Logger.getGlobal().info("Load next and previous");
                         ConfigurationSection section = warpSection.getConfigurationSection(warpName);
                         WarpData warp = dbConnector.getWarp(warpName);
                         if (warp != null) {
-                            Marker marker = new WarpMarker(this, warp);
+                            TextMarker marker = new WarpMarker(this, warp);
                             mapMarkerSet.add(marker);
 //Logger.getGlobal().info("Warp loaded: " + warpName + " " + warp.getPosition().getX() + " " + warp.getPosition().getZ());
                             if (section != null) {
@@ -242,6 +252,23 @@ Logger.getGlobal().info("Load next and previous");
         }
     }
 
+    public void open() {
+        loadPage(0);
+        mapAnimationModel.getAnimationHandler().playAnimation("open", 0, 2, 1, true);
+        activationMarker.open();
+        nextMarker.open();
+        previousMarker.open();
+    }
+
+    public void close() {
+        mapAnimationModel.getAnimationHandler().forceStopAllAnimations();
+        mapAnimationModel.getAnimationHandler().playAnimation("idle", 0, 2, 1, true);
+        activationMarker.close();
+        nextMarker.close();
+        previousMarker.close();
+        //getMapAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
+        clearPage();
+    }
     private double getMarkerRadius(ConfigurationSection section) {
         return section.getDouble("radius", mapConfig.getDouble("marker_radius", 0.1));
     }
@@ -266,8 +293,17 @@ Logger.getGlobal().info("Load next and previous");
             listener.clear();
             HandlerList.unregisterAll(listener);
         }
-        if(animationEntity != null) {
-            animationEntity.markRemoved();
+        if(mapAnimationEntity != null) {
+            //animationEntity.removeModel("book_and_map");
+            mapAnimationEntity.markRemoved();
+        }
+        if(nextAnimationEntity != null) {
+            //animationEntity.removeModel("book_and_map");
+            nextAnimationEntity.markRemoved();
+        }
+        if(previousAnimationEntity != null) {
+            //animationEntity.removeModel("book_and_map");
+            previousAnimationEntity.markRemoved();
         }
         if(activationEntity != null) {
             activationEntity.remove();
@@ -277,6 +313,21 @@ Logger.getGlobal().info("Load next and previous");
         }
         if(previousPageEntity != null) {
             previousPageEntity.remove();
+        }
+        if(nextPageModelEntity != null) {
+            nextPageModelEntity.remove();
+        }
+        if(previousPageModelEntity != null) {
+            previousPageModelEntity.remove();
+        }
+        if(nextMarker!= null) {
+            nextMarker.remove();
+        }
+        if(previousMarker != null) {
+            previousMarker.remove();
+        }
+        if(nextMarker != null) {
+            nextMarker.remove();
         }
     }
 
@@ -300,34 +351,49 @@ Logger.getGlobal().info("Load next and previous");
         return nextPageEntity;
     }
 
-    public @NotNull ActiveModel getAnimationModel() {
-        return animationModel;
+    public @NotNull ActiveModel getMapAnimationModel() {
+        return mapAnimationModel;
     }
 
     public Location getCenter() {
         return mapEntity.getLocation();
     }
 
-    public Position getTargetPosition(Player player) {
+    public RayTraceTarget getRayTraceTarget(Player player) {
         RayTraceResult result = player.getWorld()
                 .rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(),5,
-                                  entity -> entity == this.mapEntity);
-        if(result != null) {
-            return new Position(this).setWorldPosition(result.getHitPosition().getX(),
-                                                                        result.getHitPosition().getZ());
+                                  entity -> entity.equals(mapEntity) || entity.equals(activationEntity)
+                                               || entity.equals(previousPageEntity) || entity.equals(nextPageEntity));
+        if(result != null && result.getHitEntity() != null) {
+            Position position = null;
+            Marker marker = null;
+            if(result.getHitEntity().equals(mapEntity)) {
+                position = new Position(this).setWorldPosition(result.getHitPosition().getX(),
+                        result.getHitPosition().getZ());
+                marker = getMarker(position);
+            } else {
+                if(result.getHitEntity().equals(activationEntity)) {
+                    marker = activationMarker;
+                } else if(result.getHitEntity().equals(nextPageEntity)) {
+                    marker = nextMarker;
+                } else if(result.getHitEntity().equals(previousPageEntity)) {
+                    marker = previousMarker;
+                }
+            }
+            return new RayTraceTarget(marker, position);
         }
         return null;
     }
 
-    public Marker getMarker(Position position) {
+    public TextMarker getMarker(Position position) {
         return mapMarkerSet.stream().filter(marker -> {
             Location markerLocation = new Location(getCenter().getWorld(), marker.getPosition().getWorldX(),
                                                          0, marker.getPosition().getWorldZ());
             return markerLocation.distance(new Location(markerLocation.getWorld(),
                                                     position.getWorldX(),0,
                                                     position.getWorldZ())) < marker.getRadius();
-        }).min(Comparator.comparingInt(marker -> -((Marker) marker).getPriority())
-                .thenComparing(marker -> ((Marker) marker).getRadius())).orElse(null);
+        }).min(Comparator.comparingInt(marker -> -((TextMarker) marker).getPriority())
+                .thenComparing(marker -> ((TextMarker) marker).getRadius())).orElse(null);
     }
 
     public int getCurrentPage() {
@@ -356,7 +422,7 @@ Logger.getGlobal().info("Load next and previous");
                 pos2.getDouble("z",0));
     }
 
-    public Interaction loadControlEntity(ConfigurationSection section, World world) {
+    public Interaction loadControlEntity(ConfigurationSection section, World world, Transformation.Rotation rotation) {
         assert section != null;
         ConfigurationSection pos1 = section.getConfigurationSection("pos1");
         ConfigurationSection pos2 = section.getConfigurationSection("pos2");
@@ -379,12 +445,18 @@ Logger.getGlobal().info("Load next and previous");
         //nextButton = readBoundingBox(worldConfig.getConfigurationSection("next_coordinates"));
         //previousButton = readBoundingBox(worldConfig.getConfigurationSection("previous_coordinates"));
 
-        world.getNearbyEntitiesByType(Interaction.class, center,Math.max(width/2, height/2)).forEach(Entity::remove);
+        //world.getNearbyEntitiesByType(Interaction.class, center,Math.max(width/2, height/2)).forEach(Entity::remove);
 
         Interaction entity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
         entity.setInteractionHeight(height);
         entity.setInteractionWidth(width);
         entity.setPersistent(false);
+        //entity.setGlowing(true);
+        switch(rotation) {
+            case LEFT_90 -> entity.setRotation(-90,0);
+            case RIGHT_90 -> entity.setRotation(90,0);
+            case TURN_180 -> entity.setRotation(180,0);
+        }
         return entity;
     }
 
@@ -476,4 +548,6 @@ Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation()
     }*/
 
     private record PageId(String name, int no){}
+
+    public record RayTraceTarget(Marker marker, Position position) {}
 }

@@ -5,7 +5,7 @@ import com.mcmiddleearth.mapInteraction.map.Position;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
-public class PageMarker extends Marker {
+public class PageMarker extends TextMarker {
 
     private final String targetPage;
     private final Map map;

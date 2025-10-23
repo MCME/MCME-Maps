@@ -16,6 +16,7 @@ maps:
         x: -4073
         z: -4335
     marker_radius: 0.1
+    rotation: LEFT_90
     activation_coordinates:
       pos1:
         x: -4077
