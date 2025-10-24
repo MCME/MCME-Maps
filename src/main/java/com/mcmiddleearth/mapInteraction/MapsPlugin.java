@@ -16,8 +16,10 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkUnloadEvent;
+import org.bukkit.plugin.Plugin;
 
 public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
@@ -35,7 +37,7 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
         plugin = this;
         saveDefaultConfig();
         Bukkit.getPluginManager().registerEvents(this, this);
-        Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
+        //Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register( Commands.literal("mcmemaps")
                     .requires(source -> source.getSender().hasPermission("mcmemaps.manager"))
@@ -84,6 +86,7 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
         if(mapManager != null) {
             mapManager.disable();
         }
+        HandlerList.unregisterAll((Plugin)this);
     }
 
     @Override

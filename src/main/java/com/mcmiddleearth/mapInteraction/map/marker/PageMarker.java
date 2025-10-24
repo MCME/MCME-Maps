@@ -8,13 +8,10 @@ import org.bukkit.entity.Player;
 public class PageMarker extends TextMarker {
 
     private final String targetPage;
-    private final Map map;
 
     public PageMarker(Map map, Position position, String targetPage) {
-        super(position);
-        this.map = map;
+        super(map, position);
         this.targetPage = targetPage;
-        createMarkerEntity(map);
     }
 
     public String getTargetPage() {
@@ -23,12 +20,12 @@ public class PageMarker extends TextMarker {
 
     @Override
     public Component getText() {
-        return Component.text(targetPage);
+        return Component.text((targetPage!=null?targetPage:""));
     }
 
     @Override
     public void handleInteract(Player player) {
-        map.loadPage(targetPage);
+        getMap().loadPage(targetPage);
     }
 
 

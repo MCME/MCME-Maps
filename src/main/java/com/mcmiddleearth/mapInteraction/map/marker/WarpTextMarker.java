@@ -7,18 +7,14 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
 
-public class WarpMarker extends TextMarker {
+public class WarpTextMarker extends TextMarker {
 
     private final WarpData warpData;
 
-    public WarpMarker(Map map, WarpData warpData) {
-        super(createPosition(map, warpData));
+    public WarpTextMarker(Map map, WarpData warpData) {
+        super(map, createPosition(map, warpData));
         this.warpData = warpData;
-        createMarkerEntity(map);
-    }
-
-    private static Position createPosition(Map map, WarpData warpData) {
-        return new Position(map).setMapPosition(warpData.getPosition().getX(), warpData.getPosition().getZ());
+        //createMarkerEntity(map);
     }
 
     @Override

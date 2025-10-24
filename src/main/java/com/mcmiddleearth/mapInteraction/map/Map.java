@@ -1,21 +1,21 @@
 package com.mcmiddleearth.mapInteraction.map;
 
-import com.google.gson.JsonParseException;
 import com.mcmiddleearth.mapInteraction.MapsPlugin;
 import com.mcmiddleearth.mapInteraction.map.marker.*;
-import com.mcmiddleearth.mapInteraction.map.marker.Marker;
 import com.mcmiddleearth.mapInteraction.warp.MyWarpDBConnector;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.model.ActiveModel;
 import com.ticxo.modelengine.api.model.ModeledEntity;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
@@ -24,15 +24,15 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 public class Map {
 
     private final ConfigurationSection mapConfig, worldConfig;
 
     private Interaction mapEntity;
-    private Interaction activationEntity, previousPageEntity, nextPageEntity, previousPageModelEntity, nextPageModelEntity;
-    private ItemMarker activationMarker, previousMarker, nextMarker;
+    private Interaction activationEntity, activationModelEntity, previousPageEntity, nextPageEntity,
+                        previousPageModelEntity, nextPageModelEntity;
+    private ModelMarker activationMarker, previousMarker, nextMarker;
     private ModeledEntity mapAnimationEntity, nextAnimationEntity, previousAnimationEntity;
     private ActiveModel mapAnimationModel;
     //private BoundingBox nextButton, previousButton;
@@ -42,7 +42,7 @@ public class Map {
 
     private boolean loaded;
 
-    private final Set<TextMarker> mapMarkerSet = new HashSet<>();
+    private final Set<PositionMarker> mapMarkerSet = new HashSet<>();
 
     private List<String> pages;
     private int currentPage = -1;
@@ -116,6 +116,7 @@ public class Map {
             mapEntity.setPersistent(false);
 
             activationEntity = loadControlEntity(activationSection, world, rotation);
+            activationModelEntity = loadControlEntity(activationSection, world, rotation);
             nextPageModelEntity = loadControlEntity(activationSection, world, rotation);
             previousPageModelEntity = loadControlEntity(activationSection, world, rotation);
 
@@ -128,12 +129,12 @@ public class Map {
             ConfigurationSection previousSection = worldConfig.getConfigurationSection("previous_coordinates");
 
             if(nextSection != null && previousSection!= null) {
-Logger.getGlobal().info("Load next and previous");
+//Logger.getGlobal().info("Load next and previous");
                 nextPageEntity = loadControlEntity(nextSection, world, rotation);
                 previousPageEntity = loadControlEntity(previousSection, world, rotation);
             }
 
-            mapAnimationEntity = ModelEngineAPI.createModeledEntity(activationEntity);
+            mapAnimationEntity = ModelEngineAPI.createModeledEntity(activationModelEntity);
             mapAnimationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_and_map"));
             mapAnimationEntity.addModel(mapAnimationModel, true);
             nextAnimationEntity = ModelEngineAPI.createModeledEntity(nextPageModelEntity);
@@ -145,14 +146,37 @@ Logger.getGlobal().info("Load next and previous");
 
             //nextPageEntity.setRotation(90, 22.5f);
 
-            activationMarker = new ItemMarker(activationEntity, "book_transparent", rotation);
-            nextMarker = new ItemMarker(nextPageModelEntity, "book_page_right", rotation);
-            previousMarker = new ItemMarker(previousPageModelEntity, "book_page_left", rotation);
+            activationMarker = new ModelMarker(activationEntity, "book_transparent", rotation, this::open);
+            nextMarker = new ModelMarker(nextPageModelEntity, "book_page_right", rotation, this::nextPage);
+            previousMarker = new ModelMarker(previousPageModelEntity, "book_page_left", rotation, this::previousPage);
+
+            listener = new MapDisplay(this);
+            Bukkit.getPluginManager().registerEvents(listener, MapsPlugin.getInstance());
 
             loaded = true;
         } else {
             MapsPlugin.getInstance().getMcmeLogger().warn("Invalid map configuration.");
         }
+    }
+
+    private void nextPage() {
+        getMapAnimationModel().getAnimationHandler().forceStopAnimation("page" + (currentPage));
+        currentPage++;
+        if (currentPage > getPages().size() - 1) {
+            currentPage = 0;
+        }
+        loadPage(currentPage);
+        getMapAnimationModel().getAnimationHandler().playAnimation("page" + (currentPage), 0, 2, 1, true);
+    }
+
+    private void previousPage() {
+        getMapAnimationModel().getAnimationHandler().forceStopAnimation("page" + (currentPage));
+        currentPage--;
+        if (currentPage < 0) {
+            currentPage = getPages().size() - 1;
+        }
+        loadPage(currentPage);
+        getMapAnimationModel().getAnimationHandler().playAnimation("page" + (currentPage), 0, 2, 1, true);
     }
 
     public void loadPage(String name) {
@@ -221,23 +245,23 @@ Logger.getGlobal().info("Load next and previous");
                 try {
                     ConfigurationSection warpSection = pageConfig.getConfigurationSection("warps");
                     assert warpSection != null;
-                    Logger.getGlobal().info("warps: " + warpSection.getKeys(false).size());
+                    //Logger.getGlobal().info("warps: " + warpSection.getKeys(false).size());
                     for (String warpName : warpSection.getKeys(false)) {
-                        Logger.getGlobal().info("Warp name: " + warpName);
+                        //Logger.getGlobal().info("Warp name: " + warpName);
                         ConfigurationSection section = warpSection.getConfigurationSection(warpName);
                         WarpData warp = dbConnector.getWarp(warpName);
                         if (warp != null) {
-                            TextMarker marker = new WarpMarker(this, warp);
+                            WarpItemMarker marker = new WarpItemMarker(this, warp);
                             mapMarkerSet.add(marker);
 //Logger.getGlobal().info("Warp loaded: " + warpName + " " + warp.getPosition().getX() + " " + warp.getPosition().getZ());
                             if (section != null) {
                                 marker.setPriority(section.getInt("priority", 0));
                                 marker.setRadius(getMarkerRadius(section));
-                                try {
+                                /*try {
                                     marker.setMessage(GsonComponentSerializer.gson().deserialize(section.getString("message", "{\"text\":\"\"}")));
                                 } catch (JsonParseException ex) {
                                     MapsPlugin.getInstance().getMcmeLogger().warn("Error while reading warp message");
-                                }
+                                }*/
                             }
                         }
                     }
@@ -246,8 +270,6 @@ Logger.getGlobal().info("Load next and previous");
                 } finally {
                     dbConnector.disconnect();
                 }
-                listener = new MapDisplay(this);
-                Bukkit.getPluginManager().registerEvents(listener, MapsPlugin.getInstance());
             }).schedule(0, TimeUnit.SECONDS);
         }
     }
@@ -308,6 +330,9 @@ Logger.getGlobal().info("Load next and previous");
         if(activationEntity != null) {
             activationEntity.remove();
         }
+        if(activationModelEntity != null) {
+            activationModelEntity.remove();
+        }
         if(nextPageEntity != null) {
             nextPageEntity.remove();
         }
@@ -351,6 +376,18 @@ Logger.getGlobal().info("Load next and previous");
         return nextPageEntity;
     }
 
+    public ModelMarker getActivationMarker() {
+        return activationMarker;
+    }
+
+    public ModelMarker getPreviousMarker() {
+        return previousMarker;
+    }
+
+    public ModelMarker getNextMarker() {
+        return nextMarker;
+    }
+
     public @NotNull ActiveModel getMapAnimationModel() {
         return mapAnimationModel;
     }
@@ -359,14 +396,16 @@ Logger.getGlobal().info("Load next and previous");
         return mapEntity.getLocation();
     }
 
-    public RayTraceTarget getRayTraceTarget(Player player) {
+    public @NotNull RayTraceTarget getRayTraceTarget(Player player) {
         RayTraceResult result = player.getWorld()
                 .rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(),5,
-                                  entity -> entity.equals(mapEntity) || entity.equals(activationEntity)
-                                               || entity.equals(previousPageEntity) || entity.equals(nextPageEntity));
+                        entity -> (getCurrentPage()<0 && (entity.equals(getActivationEntity())))
+                                || (getCurrentPage()>=0 && (entity.equals(getMapEntity())
+                                || entity.equals(getPreviousPageEntity())
+                                || entity.equals(getNextPageEntity()))));
+        Position position = null;
+        Marker marker = null;
         if(result != null && result.getHitEntity() != null) {
-            Position position = null;
-            Marker marker = null;
             if(result.getHitEntity().equals(mapEntity)) {
                 position = new Position(this).setWorldPosition(result.getHitPosition().getX(),
                         result.getHitPosition().getZ());
@@ -380,20 +419,19 @@ Logger.getGlobal().info("Load next and previous");
                     marker = previousMarker;
                 }
             }
-            return new RayTraceTarget(marker, position);
         }
-        return null;
+        return new RayTraceTarget(marker, position);
     }
 
-    public TextMarker getMarker(Position position) {
+    public PositionMarker getMarker(Position position) {
         return mapMarkerSet.stream().filter(marker -> {
             Location markerLocation = new Location(getCenter().getWorld(), marker.getPosition().getWorldX(),
                                                          0, marker.getPosition().getWorldZ());
             return markerLocation.distance(new Location(markerLocation.getWorld(),
                                                     position.getWorldX(),0,
                                                     position.getWorldZ())) < marker.getRadius();
-        }).min(Comparator.comparingInt(marker -> -((TextMarker) marker).getPriority())
-                .thenComparing(marker -> ((TextMarker) marker).getRadius())).orElse(null);
+        }).min(Comparator.comparingInt(marker -> -((PositionMarker) marker).getPriority())
+                .thenComparing(marker -> ((PositionMarker) marker).getRadius())).orElse(null);
     }
 
     public int getCurrentPage() {
