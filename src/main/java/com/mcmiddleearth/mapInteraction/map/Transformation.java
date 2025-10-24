@@ -1,7 +1,5 @@
 package com.mcmiddleearth.mapInteraction.map;
 
-import java.util.logging.Logger;
-
 public class Transformation {
 
     private final double xShift;
@@ -41,7 +39,6 @@ public class Transformation {
         zScale = (zMapMax-zMapMin)/(zWorldMaxR-zWorldMinR);
         xShift = xMapMin - xWorldMinR * xScale;
         zShift = zMapMin - zWorldMinR * zScale;
-//Logger.getGlobal().info("xScale: "+xScale+" zScale: "+zScale+ " xShift: "+xShift+" zShift: "+zShift);
     }
 
     public double getMapX(double xWorld, double zWorld) {
@@ -70,7 +67,6 @@ public class Transformation {
             case LEFT_90 -> (zMap - zShift) / zScale;
             case TURN_180 -> -(xMap - xShift) / xScale;
         };
-        //return (xMap - xShift) / xScale;
     }
 
     public double getWorldZ(double xMap, double zMap) {
@@ -80,10 +76,9 @@ public class Transformation {
             case LEFT_90 -> -(xMap - xShift) / xScale;
             case TURN_180 -> -(zMap - zShift) / zScale;
         };
-        //return (zMap - zShift) / zScale;
     }
 
-    public static enum Rotation {
-        NONE, RIGHT_90, LEFT_90, TURN_180;
+    public enum Rotation {
+        NONE, RIGHT_90, LEFT_90, TURN_180
     }
 }

@@ -17,10 +17,8 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +33,6 @@ public class Map {
     private ModelMarker activationMarker, previousMarker, nextMarker;
     private ModeledEntity mapAnimationEntity, nextAnimationEntity, previousAnimationEntity;
     private ActiveModel mapAnimationModel;
-    //private BoundingBox nextButton, previousButton;
 
     private final double activationRadius;
     private final Location center;
@@ -120,16 +117,10 @@ public class Map {
             nextPageModelEntity = loadControlEntity(activationSection, world, rotation);
             previousPageModelEntity = loadControlEntity(activationSection, world, rotation);
 
-//Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
-//Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
-//Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
-//Logger.getGlobal().info("activation Entiry hitbox: "+activationEntity.getBoundingBox().getHeight()+" "+activationEntity.getBoundingBox().getWidthX()+" "+activationEntity.getBoundingBox().getWidthZ());
-
             ConfigurationSection nextSection = worldConfig.getConfigurationSection("next_coordinates");
             ConfigurationSection previousSection = worldConfig.getConfigurationSection("previous_coordinates");
 
             if(nextSection != null && previousSection!= null) {
-//Logger.getGlobal().info("Load next and previous");
                 nextPageEntity = loadControlEntity(nextSection, world, rotation);
                 previousPageEntity = loadControlEntity(previousSection, world, rotation);
             }
@@ -143,8 +134,6 @@ public class Map {
             previousAnimationEntity = ModelEngineAPI.createModeledEntity(previousPageModelEntity);
             ActiveModel previousAnimationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint("book_page_left"));
             previousAnimationEntity.addModel(previousAnimationModel, true);
-
-            //nextPageEntity.setRotation(90, 22.5f);
 
             activationMarker = new ModelMarker(activationEntity, "book_transparent", rotation, this::open);
             nextMarker = new ModelMarker(nextPageModelEntity, "book_page_right", rotation, this::nextPage);
@@ -251,17 +240,12 @@ public class Map {
                         ConfigurationSection section = warpSection.getConfigurationSection(warpName);
                         WarpData warp = dbConnector.getWarp(warpName);
                         if (warp != null) {
-                            WarpItemMarker marker = new WarpItemMarker(this, warp);
+                            WarpItemMarker marker = new WarpItemMarker(this, warp,
+                                                      (float) mapConfig.getDouble("warp_visualizer_radius", 0.1));
                             mapMarkerSet.add(marker);
-//Logger.getGlobal().info("Warp loaded: " + warpName + " " + warp.getPosition().getX() + " " + warp.getPosition().getZ());
                             if (section != null) {
                                 marker.setPriority(section.getInt("priority", 0));
                                 marker.setRadius(getMarkerRadius(section));
-                                /*try {
-                                    marker.setMessage(GsonComponentSerializer.gson().deserialize(section.getString("message", "{\"text\":\"\"}")));
-                                } catch (JsonParseException ex) {
-                                    MapsPlugin.getInstance().getMcmeLogger().warn("Error while reading warp message");
-                                }*/
                             }
                         }
                     }
@@ -288,7 +272,6 @@ public class Map {
         activationMarker.close();
         nextMarker.close();
         previousMarker.close();
-        //getMapAnimationModel().getAnimationHandler().playAnimation("idle", 0.1, 2, 1, true);
         clearPage();
     }
     private double getMarkerRadius(ConfigurationSection section) {
@@ -301,6 +284,7 @@ public class Map {
                 marker.getEntity().remove();
             }
         });
+        mapMarkerSet.clear();
         currentPage = -1;
     }
 
@@ -316,15 +300,12 @@ public class Map {
             HandlerList.unregisterAll(listener);
         }
         if(mapAnimationEntity != null) {
-            //animationEntity.removeModel("book_and_map");
             mapAnimationEntity.markRemoved();
         }
         if(nextAnimationEntity != null) {
-            //animationEntity.removeModel("book_and_map");
             nextAnimationEntity.markRemoved();
         }
         if(previousAnimationEntity != null) {
-            //animationEntity.removeModel("book_and_map");
             previousAnimationEntity.markRemoved();
         }
         if(activationEntity != null) {
@@ -374,18 +355,6 @@ public class Map {
 
     public Entity getNextPageEntity() {
         return nextPageEntity;
-    }
-
-    public ModelMarker getActivationMarker() {
-        return activationMarker;
-    }
-
-    public ModelMarker getPreviousMarker() {
-        return previousMarker;
-    }
-
-    public ModelMarker getNextMarker() {
-        return nextMarker;
     }
 
     public @NotNull ActiveModel getMapAnimationModel() {
@@ -446,20 +415,6 @@ public class Map {
         return pages;
     }
 
-    private BoundingBox readBoundingBox(@Nullable ConfigurationSection section) {
-        assert section != null;
-        ConfigurationSection pos1 = section.getConfigurationSection("pos1");
-        ConfigurationSection pos2 = section.getConfigurationSection("pos2");
-        assert pos1 != null;
-        assert pos2 != null;
-        return new BoundingBox(pos1.getDouble("x",0),
-                pos1.getDouble("y",0),
-                pos1.getDouble("z",0),
-                pos2.getDouble("x",0),
-                pos2.getDouble("y",0),
-                pos2.getDouble("z",0));
-    }
-
     public Interaction loadControlEntity(ConfigurationSection section, World world, Transformation.Rotation rotation) {
         assert section != null;
         ConfigurationSection pos1 = section.getConfigurationSection("pos1");
@@ -480,16 +435,11 @@ public class Map {
                 (zMin + zMax) / 2);
         float width = (float) Math.max(zMax-zMin,xMax-xMin);
         float height = (float) (yMax - yMin);
-        //nextButton = readBoundingBox(worldConfig.getConfigurationSection("next_coordinates"));
-        //previousButton = readBoundingBox(worldConfig.getConfigurationSection("previous_coordinates"));
-
-        //world.getNearbyEntitiesByType(Interaction.class, center,Math.max(width/2, height/2)).forEach(Entity::remove);
 
         Interaction entity = (Interaction) world.spawnEntity(center, EntityType.INTERACTION);
         entity.setInteractionHeight(height);
         entity.setInteractionWidth(width);
         entity.setPersistent(false);
-        //entity.setGlowing(true);
         switch(rotation) {
             case LEFT_90 -> entity.setRotation(-90,0);
             case RIGHT_90 -> entity.setRotation(90,0);
@@ -522,14 +472,8 @@ public class Map {
         max.setZ(zWorldMax);
         Chunk minChunk = min.getChunk();
         Chunk maxChunk = max.getChunk();
-/*Logger.getGlobal().info("min: "+minChunk.getX()+" "+minChunk.getZ());
-Logger.getGlobal().info("max: "+maxChunk.getX()+" "+maxChunk.getZ());
-Logger.getGlobal().info("loaded: "+min.getWorld().isChunkLoaded(100,100));
-        Chunk chunk = min.getWorld().getChunkAt(100,100);
-Logger.getGlobal().info("loaded: "+min.getWorld().isChunkLoaded(100,100));*/
         for(int i = minChunk.getX() - 1; i <= maxChunk.getX() + 1; i++) {
             for(int j = minChunk.getZ() - 1; j <= maxChunk.getZ() + 1; j++) {
-//Logger.getGlobal().info("Check chunk at: "+i+" "+j);
                 if (!min.getWorld().isChunkLoaded(i, j)) {
                     return false;
                 }
@@ -544,46 +488,8 @@ Logger.getGlobal().info("loaded: "+min.getWorld().isChunkLoaded(100,100));*/
         if(activationEntity != null) result.add(activationEntity.getChunk());
         if(nextPageEntity != null) result.add(nextPageEntity.getChunk());
         if(previousPageEntity != null) result.add(previousPageEntity.getChunk());
-        /*Location min = center.clone();
-        min.setX(xWorldMin);
-        min.setZ(zWorldMin);
-        Location max = center.clone();
-        max.setX(xWorldMin);
-        max.setZ(zWorldMin);
-        while(min.getX() <= max.getX()) {
-            result.add(min.getChunk());
-            min = min.add(new Vector(16d,0d,0d));
-        }*/
         return result;
     }
-
-/*    public boolean isPreviousPageButton(@NotNull Vector clickedPosition) {
-Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
-Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
-Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
-        Vector scaled = new Vector(clickedPosition.getX()*activationEntity.getInteractionWidth(),
-                                   clickedPosition.getY()*activationEntity.getInteractionHeight(),
-                                   clickedPosition.getZ()*activationEntity.getInteractionWidth());
-        Vector absolutePosition = activationEntity.getLocation().add(scaled).toVector();
-        Logger.getGlobal().info("clicked absolute: "+absolutePosition);
-        Logger.getGlobal().info("Bounding box: "+previousButton);
-        Logger.getGlobal().info("inside: "+ previousButton.contains(absolutePosition));
-        return previousButton.contains(absolutePosition);
-    }
-
-    public boolean isNextPageButton(@NotNull Vector clickedPosition) {
-Logger.getGlobal().info("activation Entiry height: "+activationEntity.getInteractionHeight());
-Logger.getGlobal().info("activation Entiry width: "+activationEntity.getInteractionWidth());
-Logger.getGlobal().info("activation Entiry pos: "+activationEntity.getLocation());
-        Vector scaled = new Vector(clickedPosition.getX()*activationEntity.getInteractionWidth(),
-                clickedPosition.getY()*activationEntity.getInteractionHeight(),
-                clickedPosition.getZ()*activationEntity.getInteractionWidth());
-        Vector absolutePosition = activationEntity.getLocation().add(scaled).toVector();
-        Logger.getGlobal().info("clicked absolute: "+absolutePosition);
-        Logger.getGlobal().info("Bounding box: "+nextButton);
-        Logger.getGlobal().info("inside: "+ nextButton.contains(absolutePosition));
-        return nextButton.contains(absolutePosition);
-    }*/
 
     private record PageId(String name, int no){}
 

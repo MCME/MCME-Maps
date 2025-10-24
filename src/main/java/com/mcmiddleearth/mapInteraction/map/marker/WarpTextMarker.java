@@ -1,12 +1,12 @@
 package com.mcmiddleearth.mapInteraction.map.marker;
 
 import com.mcmiddleearth.mapInteraction.map.Map;
-import com.mcmiddleearth.mapInteraction.map.Position;
 import com.mcmiddleearth.mapInteraction.warp.WarpData;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
 
+@SuppressWarnings("unused")
 public class WarpTextMarker extends TextMarker {
 
     private final WarpData warpData;
@@ -14,7 +14,6 @@ public class WarpTextMarker extends TextMarker {
     public WarpTextMarker(Map map, WarpData warpData) {
         super(map, createPosition(map, warpData));
         this.warpData = warpData;
-        //createMarkerEntity(map);
     }
 
     @Override

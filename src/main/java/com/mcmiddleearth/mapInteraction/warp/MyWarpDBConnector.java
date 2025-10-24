@@ -23,8 +23,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.io.*;
 import java.sql.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,17 +40,12 @@ public class MyWarpDBConnector {
     private Connection dbConnection;
 
     private PreparedStatement getWarp;
-    private PreparedStatement getWarpList;
-    private PreparedStatement getPlayerList;
-    private PreparedStatement getInvitations;
 
     private final File worldFile = new File(MapsPlugin.getInstance().getDataFolder(),"world.uuid");
         
     private final Map<String, String> worldUUID = new HashMap<>();
     
     private boolean connected = false;
-    
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     
     private final Task keepAliveTask;
     
@@ -127,12 +120,10 @@ public class MyWarpDBConnector {
                     + "ORDER BY warp.visits DESC");
             getWarp.setQueryTimeout(1);
             getWarp.setFetchSize(1);
-            getWarpList = dbConnection.prepareStatement("SELECT warp.warp_id, warp.name, warp.player_id, warp.type "
+            PreparedStatement getWarpList = dbConnection.prepareStatement("SELECT warp.warp_id, warp.name, warp.player_id, warp.type "
                     + "FROM warp");
             getWarpList.setQueryTimeout(1);
-            getPlayerList = dbConnection.prepareStatement("SELECT player.player_id, player.uuid FROM player");
-            getPlayerList.setQueryTimeout(1);
-            getInvitations = dbConnection.prepareStatement("SELECT player_id, warp_id FROM warp_player_map");
+            PreparedStatement getPlayerList = dbConnection.prepareStatement("SELECT player.player_id, player.uuid FROM player");
             getPlayerList.setQueryTimeout(1);
             connected = true;
         } catch (SQLException ex) {
@@ -141,46 +132,6 @@ public class MyWarpDBConnector {
         }
     }
 
-    public Set<WarpData> getWarps() {
-        Set<WarpData> result = new HashSet<>();
-        try {
-            ResultSet warpData = getWarpList.executeQuery();
-            ResultSet playerData = getPlayerList.executeQuery();
-            Map<Integer, UUID> players = new HashMap<>(); //player_id -> player UUID
-            if(playerData.next()) {
-                do {
-                    players.put(playerData.getInt("player.player_id"),
-                            UUID.fromString(playerData.getString("player.uuid")));
-                } while(playerData.next());
-            }
-            playerData.close();
-            ResultSet invitationData = getInvitations.executeQuery();
-            Map<Integer, Set<UUID>> invitations = new HashMap<>(); // warp_id -> List of player UUID
-            if(invitationData.next()) {
-                do {
-                    int warpId = invitationData.getInt("warp_id");
-                    Set<UUID> invitedPlayers = invitations.computeIfAbsent(warpId, k -> new HashSet<>());
-                    invitedPlayers.add(players.get(invitationData.getInt("player_id")));
-                } while(invitationData.next());
-            }
-            if(warpData.next()) {
-                do {
-                    WarpData warp = new WarpData();
-                    warp.setName(warpData.getString("warp.name"));
-                    warp.setPublic(warpData.getInt("warp.type")==1);
-                    warp.setOwner(players.get(warpData.getInt("warp.player_id")));
-                    warp.setInvited(invitations.get(warpData.getInt("warp.warp_id")));
-                    result.add(warp);
-                } while(warpData.next());
-            }
-            warpData.close();
-        } catch (SQLException ex) {
-            MapsPlugin.getInstance().getMcmeLogger().error("SQLException", ex);
-            connected = false;
-        }
-        return result;
-    }
-    
     public WarpData getWarp(String name) {
         if(connected) {
             try {
@@ -227,11 +178,6 @@ public class MyWarpDBConnector {
         return result.toString();
     }
     
-    public void addWorldUUID(String uuid, String worldName) {
-        worldUUID.put(uuid, worldName);
-        saveWorldUUIDs();
-    }
-    
     private void loadWorldUUIDs() {
         if(!worldFile.exists()) {
             return;
@@ -247,40 +193,7 @@ public class MyWarpDBConnector {
 
         }
     }
-    
-    private void saveWorldUUIDs() {
-        try(PrintWriter fw = new PrintWriter(new FileWriter(worldFile))) {
-            worldUUID.forEach((key, value) -> fw.println(key + ";" + value));
-        } catch (IOException ex) {
-            MapsPlugin.getInstance().getMcmeLogger().error("IOException", ex);
-        }
-    }
 
-    public boolean isConnected() {
-        return connected;
-    }
 }
 
 
-/*
-
-SELECT warp.name, warp.x, warp.y, warp.z, warp.pitch, warp.yaw, warp.welcome_message, 
-       warp.type, world.uuid, owner.uuid, invited.uuid 
-  FROM warp JOIN player AS owner ON warp.player_id = owner.player_id 
-            JOIN world ON warp.world_id = world.world_id 
-            LEFT JOIN warp_player_map ON warp.warp_id = warp_player_map.warp_id 
-            LEFT JOIN player AS invited ON warp_player_map.player_id = invited.player_id 
-  WHERE warp.name LIKE "%Ere%" AND (owner.uuid = "fedf6ee0-8573-4588-89cf-5951e2596795" OR invited.uuid = "fedf6ee0-8573-4588-89cf-5951e2596795")
-
-SELECT warp.name, warp.x, warp.y, warp.z, warp.pitch, warp.yaw, warp.welcome_message, 
-       warp.type, world.uuid, owner.uuid, invited.uuid 
-FROM warp JOIN player AS owner ON warp.player_id = owner.player_id 
-          JOIN world ON warp.world_id = world.world_id 
-          LEFT JOIN warp_player_map ON warp.warp_id = warp_player_map.warp_id 
-          LEFT JOIN player AS invited ON warp_player_map.player_id = invited.player_id 
-WHERE warp.name REGEXP '[kK][hH][aA][zZ][aA][dD][ |-][dD][uU][mM]*' 
-         AND (warp.type = 1 OR owner.uuid = 'fedf6ee0-8573-4588-89cf-5951e2596795' OR invited.uuid = 'fedf6ee0-8573-4588-89cf-5951e2596795')
-
-select warp.name from warp join player using(player_id) 
-where player.uuid = "fedf6ee0-8573-4588-89cf-5951e2596795"
-*/

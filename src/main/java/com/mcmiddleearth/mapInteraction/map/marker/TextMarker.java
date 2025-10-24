@@ -3,7 +3,6 @@ package com.mcmiddleearth.mapInteraction.map.marker;
 import com.mcmiddleearth.mapInteraction.map.Map;
 import com.mcmiddleearth.mapInteraction.map.Position;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.EntityType;
@@ -13,7 +12,7 @@ import org.joml.Vector3f;
 
 public abstract class TextMarker extends PositionMarker {
 
-    private Component message;
+    //private Component message;
 
     private final TextDisplay entity;
 
@@ -35,20 +34,10 @@ public abstract class TextMarker extends PositionMarker {
 
     public abstract Component getText();
 
-    public Component getMessage() {
-        return message;
-    }
-
-    public void setMessage(Component message) {
-        this.message = message;
-    }
-
     @Override
     public TextDisplay getEntity() {
         return entity;
     }
 
-    public String getPlainText() {
-        return PlainTextComponentSerializer.plainText().serialize(getText());
-    }
+    //public String getPlainText() { return PlainTextComponentSerializer.plainText().serialize(getText()); }
 }

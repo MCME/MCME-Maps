@@ -26,19 +26,14 @@ public class MapDisplay implements Listener {
     private final HashMap<Player, Marker> markers = new HashMap<>();
     private final BukkitTask task;
 
-    private final static boolean showCoordinates = false;
-
     public MapDisplay(Map map) {
         this.map = map;
         task = new BukkitRunnable()  {
             int counter=0;
             @Override
             public void run() {
-//Logger.getGlobal().info("Move ticker...");
-                map.getCenter().getWorld().getNearbyEntitiesByType(Player.class, map.getCenter(), 6).forEach(player -> {
-//Logger.getGlobal().info("Player move: "+player.getName());
-                    playerMove(player);
-                });
+                map.getCenter().getWorld().getNearbyEntitiesByType(Player.class, map.getCenter(), 6)
+                        .forEach(player -> playerMove(player));
                 counter++;
                 if(counter == 4) {
                     counter = 0;
@@ -54,27 +49,18 @@ public class MapDisplay implements Listener {
     public void clear() {
         coordEntities.forEach((player, entity) -> entity.remove());
         coordEntities.clear();
-        markers.forEach((player, marker) -> {
-            player.hideEntity(MapsPlugin.getInstance(), marker.getEntity());
-        });
+        markers.forEach((player, marker) -> player.hideEntity(MapsPlugin.getInstance(), marker.getEntity()));
         markers.clear();
         task.cancel();
     }
 
-    //@EventHandler
-    //public void playerMove(PlayerMoveEvent event) {
-    //    Player player = event.getPlayer();
     public void playerMove(Player player) {
         if(player.getLocation().distance(map.getCenter()) < 8) {
             Map.RayTraceTarget rayTraceTarget = map.getRayTraceTarget(player);
             Position position = rayTraceTarget.position();
             Marker marker = rayTraceTarget.marker();
-            //Logger.getGlobal().info("Markers: "+map.);
-//Logger.getGlobal().info("Position: "+position+" marker: "+marker);
             if (marker != null) {
-                //TextMarker marker = map.getMarker(position);
                 Marker lastMarker = markers.get(player);
-                //if(marker != null) {
                 if (lastMarker != marker) {
                     if (lastMarker != null) {
                         player.hideEntity(MapsPlugin.getInstance(), lastMarker.getEntity());
@@ -82,16 +68,10 @@ public class MapDisplay implements Listener {
                     player.showEntity(MapsPlugin.getInstance(), marker.getEntity());
                     markers.put(player, marker);
                 }
-                /*} else {
-                    if(lastMarker != null) {
-                        player.hideEntity(MapsPlugin.getInstance(),lastMarker.getEntity());
-                        markers.remove(player);
-                    }
-                }*/
             } else {
                 hideMarker(player);
             }
-            if (showCoordinates) {
+            if (MapsPlugin.getPlugin().isShowCoordinates(player)) {
                 TextDisplay entity = coordEntities.get(player);
                 if (position != null) {
                     Location entityPosition = new Location(player.getWorld(), position.getWorldX(),
@@ -111,16 +91,19 @@ public class MapDisplay implements Listener {
                     } else {
                         entity.teleport(entityPosition);
                     }
-                    entity.text(Component.text(String.format("x: %1$.2f  z: %2$.2f", position.getMapX(), position.getMapZ())));
+                    entity.text(Component.text(String.format("x: %1$.0f  z: %2$.0f", position.getMapX(), position.getMapZ())));
                 } else {
                     if (entity != null) {
-                        //Logger.getGlobal().info("remove entity");
                         coordEntities.remove(player);
                         entity.remove();
                     }
                 }
-            //} else {
-            //    hideMarker(player);
+            } else {
+                Entity entity = coordEntities.get(player);
+                if(entity != null) {
+                    entity.remove();
+                    coordEntities.remove(player);
+                }
             }
         } else {
             hideMarker(player);
@@ -153,12 +136,6 @@ public class MapDisplay implements Listener {
     public void onInteract(PlayerInteractEvent event) {
         if(EquipmentSlot.HAND.equals(event.getHand())) {
             handleInteract(event.getPlayer());
-            /*RayTraceResult result = event.getPlayer().rayTraceEntities(5, true);
-Logger.getGlobal().info("Interact ray trace: " + result);
-            if (result != null && result.getHitEntity() != null) {
-Logger.getGlobal().info("Interact ray trace hit: " + result.getHitEntity());
-                handleInteract(event.getPlayer(), result.getHitEntity());
-            }*/
         }
     }
 
@@ -172,12 +149,6 @@ Logger.getGlobal().info("Interact ray trace hit: " + result.getHitEntity());
         if(target.marker()!=null) {
             target.marker().handleInteract(player);
         }
-        /*if(entity.equals(map.getMapEntity())) {
-            Marker marker = markers.get(player);
-            if(marker != null) {
-                marker.handleInteract(player);
-            }
-        }*/
     }
 
 }

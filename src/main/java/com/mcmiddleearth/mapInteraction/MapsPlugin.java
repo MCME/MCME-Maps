@@ -3,7 +3,6 @@ package com.mcmiddleearth.mapInteraction;
 import com.mcmiddleearth.base.bukkit.AbstractPaperPlugin;
 import com.mcmiddleearth.base.core.message.Message;
 import com.mcmiddleearth.mapInteraction.map.MapManager;
-import com.mcmiddleearth.mapInteraction.map.animation.AnimationListener;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.ticxo.modelengine.api.events.ModelRegistrationEvent;
 import com.ticxo.modelengine.api.generator.ModelGenerator;
@@ -21,43 +20,65 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
 
     private static MapsPlugin plugin;
 
     private MapManager mapManager;
 
+    private final Set<UUID> showCoordinates = new HashSet<>();
+
     public static MapsPlugin getInstance() {
         return plugin;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
+    @SuppressWarnings({"UnstableApiUsage"})
     @Override
     public void enable() {
         plugin = this;
         saveDefaultConfig();
         Bukkit.getPluginManager().registerEvents(this, this);
         //Bukkit.getPluginManager().registerEvents(new AnimationListener(), this);
-        this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            commands.registrar().register( Commands.literal("mcmemaps")
-                    .requires(source -> source.getSender().hasPermission("mcmemaps.manager"))
-                    .then(Commands.literal("reload")
-                            .executes(context -> {
-                                mapManager.reload();
-                                return 0;
-                            }))
-                    .then(Commands.literal("cleanup")
-                            .then(Commands.argument("radius", IntegerArgumentType.integer(0,10))
-                                    .requires(source -> source.getSender() instanceof Player)
-                                    .executes(context -> {
-                                        Location loc = ((Player)context.getSource().getSender()).getLocation();
-                                        loc.getWorld().getNearbyEntitiesByType(Interaction.class,
-                                                loc,context.getArgument("radius",Integer.class))
-                                                .forEach(Entity::remove);
-                                        return 0;
-                                    })))
-                    .build());
-        });
+        this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands
+             -> commands.registrar().register( Commands.literal("mcmemaps")
+                .then(Commands.literal("showcoord")
+                        .requires(source -> source.getSender() instanceof Player
+                                && source.getSender().hasPermission("mcmemaps.coord")
+                                && !isShowCoordinates((Player)source.getSender()))
+                        .executes(context -> {
+                            setShowCoordinates(((Player)context.getSource().getSender()), true);
+                            return 0;
+                        }))
+                .then(Commands.literal("hidecoord")
+                        .requires(source -> source.getSender() instanceof Player
+                                && source.getSender().hasPermission("mcmemaps.coord")
+                                && isShowCoordinates((Player)source.getSender()))
+                        .executes(context -> {
+                            setShowCoordinates(((Player)context.getSource().getSender()), false);
+                            return 0;
+                        }))
+                .then(Commands.literal("reload")
+                        .requires(source -> source.getSender().hasPermission("mcmemaps.manager"))
+                        .executes(context -> {
+                            mapManager.reload();
+                            return 0;
+                        }))
+                .then(Commands.literal("cleanup")
+                        .then(Commands.argument("radius", IntegerArgumentType.integer(0,10))
+                                .requires(source -> source.getSender() instanceof Player
+                                                            && source.getSender().hasPermission("mcmemaps.manager"))
+                                .executes(context -> {
+                                    Location loc = ((Player)context.getSource().getSender()).getLocation();
+                                    loc.getWorld().getNearbyEntitiesByType(Interaction.class,
+                                            loc,context.getArgument("radius",Integer.class))
+                                            .forEach(Entity::remove);
+                                    return 0;
+                                })))
+                .build()));
     }
 
     @EventHandler
@@ -94,11 +115,19 @@ public final class MapsPlugin extends AbstractPaperPlugin implements Listener {
         return  createMessage().add("[MapInteraction] ");
     }
 
-    public MapManager getMapManager() {
-        return mapManager;
-    }
-
     public static MapsPlugin getPlugin() {
         return plugin;
+    }
+
+    public void setShowCoordinates(Player player, boolean show) {
+        if(show) {
+            showCoordinates.add(player.getUniqueId());
+        } else {
+            showCoordinates.remove(player.getUniqueId());
+        }
+    }
+
+    public boolean isShowCoordinates(Player player) {
+        return showCoordinates.contains(player.getUniqueId());
     }
 }

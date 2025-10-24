@@ -17,6 +17,8 @@
 package com.mcmiddleearth.mapInteraction.warp;
 
 import com.mcmiddleearth.base.core.player.McmeProxyPlayer;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
 import java.util.UUID;
@@ -28,12 +30,14 @@ import java.util.Objects;
  *
  * @author Eriol_Eandur
  */
+
+@SuppressWarnings("unused")
 public class WarpData {
     
     private String server;
     private String world;
     private String name;
-    private String location;
+    private Location location;
     private Vector warpPosition;
     private String welcomeMessage;
     private boolean visibleToEveryone;
@@ -64,16 +68,17 @@ public class WarpData {
         this.name = name;
     }
 
-    public String getLocation() {
+    public Location getLocation() {
         return location;
     }
 
     public void setLocation(String location) {
-        this.location = location;
         String[] locData = location.split(";");
         warpPosition = new Vector(Double.parseDouble(locData[0]),
                 Double.parseDouble(locData[1]),
                 Double.parseDouble(locData[2]));
+        this.location = warpPosition.toLocation(Bukkit.getWorlds().getFirst(),
+                Float.parseFloat(locData[3]), Float.parseFloat(locData[4]));
     }
 
     public String getWelcomeMessage() {

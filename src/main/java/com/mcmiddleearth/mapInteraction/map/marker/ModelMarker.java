@@ -26,8 +26,6 @@ public class ModelMarker implements Marker {
             case RIGHT_90 -> this.entity.setRotation(90,0);
             case TURN_180 -> this.entity.setRotation(180,0);
         }
-        //this.entity.setBillboard(entity.getBillboard());
-        //this.entity.setTransformation(entity.getTransformation());
 
         animationEntity = ModelEngineAPI.createModeledEntity(this.entity);
         animationModel = ModelEngineAPI.createActiveModel(ModelEngineAPI.getBlueprint(model));

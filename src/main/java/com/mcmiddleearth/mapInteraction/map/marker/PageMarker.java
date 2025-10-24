@@ -14,10 +14,6 @@ public class PageMarker extends TextMarker {
         this.targetPage = targetPage;
     }
 
-    public String getTargetPage() {
-        return targetPage;
-    }
-
     @Override
     public Component getText() {
         return Component.text((targetPage!=null?targetPage:""));
@@ -27,6 +23,5 @@ public class PageMarker extends TextMarker {
     public void handleInteract(Player player) {
         getMap().loadPage(targetPage);
     }
-
 
 }
